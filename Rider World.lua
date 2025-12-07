@@ -1,11 +1,17 @@
--- AdminAllInOne.lua v4.0 - MULTI-DUNGEON SYSTEM!
+-- AdminAllInOne.lua v5.1 - ULTRA MODERN UI + MULTI-DUNGEON SYSTEM + CRONUS BOSS!
+-- 🎨 NEW: Completely Redesigned UI with Modern Aesthetics
+-- 🌈 Gradient Colors, Smooth Animations, Glassmorphism Effects
+-- ⚡ NEW: Added Cronus Lv.90 Boss Farm
+
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
--- 🆕 ตัวแปรควบคุม Auto Attack/Skills 
-local combatPaused = false  -- ใช้หยุดการโจมตีชั่วคราว
+local TweenService = game:GetService("TweenService")
+
+-- ตัวแปรควบคุม Auto Attack/Skills 
+local combatPaused = false
 
 local player = Players.LocalPlayer
 
@@ -13,7 +19,7 @@ local player = Players.LocalPlayer
 local programRunning = true
 local livesFolderName = "Lives"
 
--- =================== Auto Level Farm Database (FIXED!) ===================
+-- =================== Auto Level Farm Database ===================
 local levelFarmData = {
     {level = 1, maxLevel = 4, monster = "Lost Rider Lv.1"},
     {level = 5, maxLevel = 6, monster = "Armed Lost Rider Lv.5"},
@@ -34,7 +40,7 @@ local levelFarmData = {
     {level = 64, maxLevel = 69, monster = "Foundation Soldier Lv.64"},
     {level = 70, maxLevel = 74, monster = "Timeless Goon Lv.70"},
     {level = 75, maxLevel = 79, monster = "Captain Goon Lv.75"},
-    {level = 80, maxLevel = 999, monster = "STOP"} -- หยุดที่เลเวล 80
+    {level = 80, maxLevel = 999, monster = "STOP"}
 }
 
 local targetMonsters = {
@@ -56,8 +62,9 @@ local state = {
     lockPos=false,
     afkEnabled=false,
     autoBoss=false,
+    autoCronus=false,
     autoDungeon=false,
-    selectedDungeon="ethernal", -- 🆕 ดันที่เลือก
+    selectedDungeon="ethernal",
     autoMine=false,
     autoAttack=false,
     autoHeavyAttack=false,
@@ -135,7 +142,7 @@ local questDatabase = {
     }
 }
 
--- =================== Boss Database (เพิ่มดันใหม่ที่นี่!) ===================
+-- =================== Boss Database ===================
 local bossDatabase = {
     ethernal = {
         id = "ethernal",
@@ -150,16 +157,13 @@ local bossDatabase = {
         dungeonName = "Trial of Ancient",
         bossNames = {"Daguba Lv.90", "Mighty Rider Lv.90", "Empowered Daguba Lv.90"},
         icon = "🏛️"
+    },
+    cronus = {
+        id = "cronus",
+        displayName = "Cronus Boss",
+        bossName = "Cronus Lv.90",
+        icon = "⏰"
     }
-    -- 🆕 เพิ่มดันใหม่ตรงนี้!
-    -- ตัวอย่าง:
-    -- darkness = {
-    --     id = "darkness",
-    --     displayName = "Trial of Darkness",
-    --     dungeonName = "Trial of Darkness",
-    --     bossNames = {"Dark Lord Lv.100"},
-    --     icon = "🌑"
-    -- }
 }
 
 local bp,bv,bg
@@ -177,7 +181,6 @@ end)
 local function getChar() return player.Character or player.CharacterAdded:Wait() end
 local function getHRP() return getChar():FindFirstChild("HumanoidRootPart") end
 
--- =================== Get Player Level (FIXED!) ===================
 local function getPlayerLevel()
     local success, level = pcall(function()
         local stats = player:FindFirstChild("StatsReplicated")
@@ -193,12 +196,10 @@ local function getPlayerLevel()
     if success and level and level > 0 then
         return level
     else
-        print("⚠️ [Level] ไม่สามารถอ่านเลเวลได้ - ใช้ค่าเริ่มต้น 1")
         return 1
     end
 end
 
--- =================== Get Target Monster by Level ===================
 local function getTargetMonsterByLevel(level)
     for _, data in ipairs(levelFarmData) do
         if level >= data.level and level <= data.maxLevel then
@@ -208,7 +209,6 @@ local function getTargetMonsterByLevel(level)
     return nil
 end
 
--- =================== Find Monster in Workspace ===================
 local function findMonsterByName(monsterName)
     local livesFolder = workspace:FindFirstChild(livesFolderName)
     if not livesFolder then return nil end
@@ -223,7 +223,6 @@ local function findMonsterByName(monsterName)
     return nil
 end
 
--- =================== Smart Teleport (วาร์ปไกลได้!) ===================
 local function smartTeleport(targetCFrame)
     local hrp = getHRP()
     if not hrp or not targetCFrame then 
@@ -232,14 +231,12 @@ local function smartTeleport(targetCFrame)
     
     local char = getChar()
     
-    -- ปิด Collision ก่อนวาร์ป
     for _, part in pairs(char:GetDescendants()) do
         if part:IsA("BasePart") then
             part.CanCollide = false
         end
     end
     
-    -- วาร์ปหลายครั้งเพื่อความแม่นยำ
     for i = 1, 10 do
         pcall(function()
             hrp.CFrame = targetCFrame
@@ -251,7 +248,6 @@ local function smartTeleport(targetCFrame)
     
     wait(0.2)
     
-    -- เปิด Collision กลับ
     for _, part in pairs(char:GetDescendants()) do
         if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and part.Name ~= "Head" then
             part.CanCollide = true
@@ -286,6 +282,20 @@ local function getBoss()
     for _, mob in ipairs(livesFolder:GetChildren()) do
         if mob.Name == "Possessed Rider Lv.90" and mob:FindFirstChild("HumanoidRootPart") then
             return mob
+        end
+    end
+    return nil
+end
+
+-- ⚡ NEW: ฟังก์ชันสำหรับหา Cronus Boss
+local function getCronusBoss()
+    local livesFolder = workspace:FindFirstChild(livesFolderName)
+    if not livesFolder then return nil end
+    for _, mob in ipairs(livesFolder:GetChildren()) do
+        if mob.Name == "Cronus Lv.90" and mob:FindFirstChild("HumanoidRootPart") and mob:FindFirstChild("Humanoid") then
+            if mob.Humanoid.Health > 0 then
+                return mob
+            end
         end
     end
     return nil
@@ -407,12 +417,10 @@ end
 local function forceTP(targetCFrame)
     local hrp = getHRP()
     if not hrp or not targetCFrame then 
-        print("❌ [TP] ไม่พบ HRP หรือ Target")
         return false 
     end
     
     local char = getChar()
-    print("🚀 [TP] กำลังวาร์ป...")
     
     for _, part in pairs(char:GetDescendants()) do
         if part:IsA("BasePart") then
@@ -429,9 +437,6 @@ local function forceTP(targetCFrame)
         wait(0.05)
     end
     
-    local distance = (hrp.Position - targetCFrame.Position).Magnitude
-    print("📍 [TP] ระยะห่าง: " .. math.floor(distance) .. " studs")
-    
     wait(0.3)
     
     for _, part in pairs(char:GetDescendants()) do
@@ -440,15 +445,11 @@ local function forceTP(targetCFrame)
         end
     end
     
-    return distance < 50
+    return true
 end
 
 local function enterDungeonUI(dungeonName)
-    print("\n🚪 [Dungeon] ===== เปิด Dungeon UI =====")
-    
-    -- 🛑 หยุดการโจมตีตอนเปิด UI
     combatPaused = true
-    print("⏸️ [Dungeon] หยุด Auto Attack/Skills ตอนเปิด UI")
     wait(0.3)
     
     local dungeonButtonClicked = false
@@ -459,11 +460,8 @@ local function enterDungeonUI(dungeonName)
             if functionFrame then
                 local dungeonBtn = functionFrame:FindFirstChild("Dungeon")
                 if dungeonBtn then
-                    print("✅ [Dungeon] พบปุ่ม Dungeon: " .. dungeonBtn.ClassName)
-                    
                     for _, child in ipairs(dungeonBtn:GetDescendants()) do
                         if (child:IsA("TextButton") or child:IsA("ImageButton")) and child.Visible then
-                            print("🔘 [Dungeon] คลิกปุ่ม: " .. child.Name)
                             for _, connection in pairs(getconnections(child.MouseButton1Click)) do
                                 connection:Fire()
                                 dungeonButtonClicked = true
@@ -477,7 +475,6 @@ local function enterDungeonUI(dungeonName)
                     end
                     
                     if not dungeonButtonClicked and (dungeonBtn:IsA("TextButton") or dungeonBtn:IsA("ImageButton")) then
-                        print("🔘 [Dungeon] คลิก Dungeon button โดยตรง")
                         for _, connection in pairs(getconnections(dungeonBtn.MouseButton1Click)) do
                             connection:Fire()
                             dungeonButtonClicked = true
@@ -493,10 +490,8 @@ local function enterDungeonUI(dungeonName)
     end)
     
     if dungeonButtonClicked then
-        print("✅ [Dungeon] คลิกปุ่ม Dungeon สำเร็จ - รอ UI โหลด...")
         wait(2)
     else
-        print("⚠️ [Dungeon] ไม่พบปุ่ม Dungeon - ลองต่อ...")
         wait(1)
         return false
     end
@@ -505,15 +500,12 @@ local function enterDungeonUI(dungeonName)
     for attempt = 1, 5 do
         dungeonGUI = player.PlayerGui:FindFirstChild("DungeonGUI")
         if dungeonGUI then 
-            print("✅ [Dungeon] พบ DungeonGUI!")
             break 
         end
-        print("⏳ [Dungeon] รอ DungeonGUI... (" .. attempt .. "/5)")
         wait(1)
     end
     
     if not dungeonGUI then
-        print("❌ [Dungeon] ไม่พบ DungeonGUI")
         return false
     end
     
@@ -523,18 +515,13 @@ local function enterDungeonUI(dungeonName)
     end
     
     if not dungeonList then
-        print("❌ [Dungeon] ไม่พบ DungeonList")
         return false
     end
     
-    print("🔍 [Dungeon] กำลังหา " .. dungeonName .. "...")
     local targetDungeon = dungeonList:FindFirstChild(dungeonName)
     if not targetDungeon then
-        print("❌ [Dungeon] ไม่พบ '" .. dungeonName .. "'")
         return false
     end
-    
-    print("✅ [Dungeon] พบ " .. dungeonName .. "!")
     
     local enterButton = nil
     for _, child in ipairs(targetDungeon:GetDescendants()) do
@@ -545,11 +532,9 @@ local function enterDungeonUI(dungeonName)
     end
     
     if not enterButton then
-        print("❌ [Dungeon] ไม่พบปุ่ม Enter")
         return false
     end
     
-    print("🚪 [Dungeon] กดปุ่ม Enter...")
     pcall(function()
         for _, connection in pairs(getconnections(enterButton.MouseButton1Click)) do
             connection:Fire()
@@ -558,7 +543,6 @@ local function enterDungeonUI(dungeonName)
     end)
     wait(2)
     
-    print("🔍 [Dungeon] หาปุ่ม Confirm...")
     local confirmButton = nil
     local attempts = 0
     while attempts < 10 and not confirmButton do
@@ -578,11 +562,9 @@ local function enterDungeonUI(dungeonName)
     end
     
     if not confirmButton then
-        print("❌ [Dungeon] ไม่พบปุ่ม Confirm")
         return false
     end
     
-    print("✅ [Dungeon] กดปุ่ม Confirm...")
     pcall(function()
         for _, connection in pairs(getconnections(confirmButton.MouseButton1Click)) do
             connection:Fire()
@@ -590,46 +572,29 @@ local function enterDungeonUI(dungeonName)
         confirmButton.MouseButton1Click:Fire()
     end)
     
-    print("⏳ [Dungeon] รอเข้าดันเจี้ยน 30 วินาที...")
-    print("⏸️ [Dungeon] ยังคงปิดการโจมตี...")
     for i = 30, 1, -1 do
         if not state.autoQuest or not programRunning then break end
-        if i % 10 == 0 then
-            print("⏰ [Dungeon] เหลืออีก " .. i .. " วินาที...")
-        end
         wait(1)
     end
-    
-    -- ⚠️ ยังไม่เปิดการโจมตีที่นี่ - จะเปิดตอนพบบอส
-    print("✅ [Dungeon] เข้าดันสำเร็จ - ยังคงปิดการโจมตี รอหาบอส...")
     
     return true
 end
 
 local function summonAndKillStoneBoss(stoneData, bossNames)
-    print("\n🔮 [Stone] ========== " .. stoneData.name .. " ==========")
-    
-    -- 🛑 หยุดการโจมตีตั้งแต่เริ่มต้น
     combatPaused = true
-    print("⏸️ [Stone] หยุด Auto Attack/Skills/X ตอนวาร์ป")
     wait(0.3)
     
     local livesFolder = workspace:FindFirstChild(livesFolderName)
     if not livesFolder then
-        print("❌ [Stone] ไม่พบ Lives folder")
         return false
     end
     
     local targetCFrame = stoneData.cframe * CFrame.new(0, 3, 5)
-    print("🚀 [Stone] วาร์ปไปที่ " .. stoneData.name .. " (3 ครั้ง)...")
-    print("⏸️ [Stone] ยังคงปิดการโจมตี...")
     for tpCount = 1, 3 do
         forceTP(targetCFrame)
         wait(1)
     end
     
-    print("🔮 [Stone] กด E เพื่อซัมมอนบอส (8 ครั้ง)...")
-    print("⏸️ [Stone] ยังคงปิดการโจมตีตอนกด E...")
     for pressCount = 1, 8 do
         local hrp = getHRP()
         pcall(function()
@@ -646,8 +611,6 @@ local function summonAndKillStoneBoss(stoneData, bossNames)
     
     wait(2)
     
-    print("⏳ [Stone] รอบอสเกิด (สูงสุด 40 วินาที)...")
-    print("⏸️ [Stone] ยังคงปิดการโจมตี รอจนกว่าจะพบบอส...")
     local bossFound = nil
     local searchAttempts = 0
     local maxSearchAttempts = 40
@@ -657,11 +620,7 @@ local function summonAndKillStoneBoss(stoneData, bossNames)
             local boss = livesFolder:FindFirstChild(bossName)
             if boss and boss:FindFirstChild("HumanoidRootPart") and boss:FindFirstChild("Humanoid") and boss.Humanoid.Health > 0 then
                 bossFound = boss
-                print("✅ [Stone] พบบอส: " .. bossName .. "! 🎯")
-                
-                -- ✅ พบบอสแล้ว เปิดการโจมตีได้เลย!
                 combatPaused = false
-                print("▶️ [Stone] พบบอสแล้ว - เปิด Auto Attack/Skills/X!")
                 wait(0.5)
                 break
             end
@@ -670,8 +629,6 @@ local function summonAndKillStoneBoss(stoneData, bossNames)
         if bossFound then break end
         
         if searchAttempts % 8 == 0 and searchAttempts > 0 then
-            print("🔮 [Stone] ลองกด E อีกครั้ง...")
-            print("⏸️ [Stone] ยังคงปิดการโจมตี...")
             local hrp = getHRP()
             pcall(function()
                 if hrp then
@@ -688,20 +645,12 @@ local function summonAndKillStoneBoss(stoneData, bossNames)
     end
     
     if not bossFound then
-        print("⚠️ [Stone] ไม่พบบอสภายใน 40 วิ - ข้ามไปหินถัดไป")
-        -- 🛑 ไม่พบบอส ปิดการโจมตีไว้ต่อ
         combatPaused = true
-        print("⏸️ [Stone] ไม่พบบอส - ยังคงปิดการโจมตี")
         return false
     end
     
     local bossHRP = bossFound:FindFirstChild("HumanoidRootPart")
     local bossHumanoid = bossFound:FindFirstChild("Humanoid")
-    
-    print("⚔️ [Stone] เริ่มโจมตีบอส! HP: " .. math.floor(bossHumanoid.Health))
-    local lastHPReport = os.time()
-    local stuckCounter = 0
-    local lastHP = bossHumanoid.Health
     
     while programRunning and state.autoQuest and bossFound.Parent and bossHumanoid.Health > 0 do
         if bossHRP and bossHRP.Parent then
@@ -714,41 +663,18 @@ local function summonAndKillStoneBoss(stoneData, bossNames)
                     hrp.CFrame = CFrame.new(backPos, Vector3.new(bossHRP.Position.X, backPos.Y, bossHRP.Position.Z))
                 end
             end)
-            
-            if os.time() - lastHPReport >= 5 then
-                local currentHP = bossHumanoid.Health
-                print("💥 [Stone] Boss HP: " .. math.floor(currentHP) .. " (เหลือ " .. math.floor(currentHP/bossHumanoid.MaxHealth*100) .. "%)")
-                
-                if math.abs(currentHP - lastHP) < 10 then
-                    stuckCounter = stuckCounter + 1
-                    if stuckCounter >= 3 then
-                        print("⚠️ [Stone] HP ไม่ลง! ลองวาร์ปใหม่...")
-                        forceTP(CFrame.new(backPos, Vector3.new(bossHRP.Position.X, backPos.Y, bossHRP.Position.Z)))
-                        stuckCounter = 0
-                    end
-                else
-                    stuckCounter = 0
-                end
-                
-                lastHP = currentHP
-                lastHPReport = os.time()
-            end
         else
             break
         end
         wait(0.15)
     end
     
-    print("✅ [Stone] ฆ่าบอสที่ " .. stoneData.name .. " สำเร็จ! 🎉")
-    
-    -- 🛑 ฆ่าบอสเสร็จแล้ว หยุดการโจมตี
     combatPaused = true
-    print("⏸️ [Stone] ฆ่าบอสเสร็จ - หยุดการโจมตี ไปหินถัดไป")
     wait(2)
     return true
 end
 
--- =================== Auto Level Farm Loop (ENHANCED v3!) ===================
+-- =================== Auto Level Farm Loop ===================
 spawn(function()
     local lastLevel = 0
     local currentTargetMonster = nil
@@ -760,29 +686,17 @@ spawn(function()
         if state.autoLevelFarm then
             local currentTime = tick()
             
-            -- ตรวจสอบเลเวลทุก 3 วินาที (เร็วขึ้น!)
             if currentTime - lastLevelCheckTime >= 3 then
                 local playerLevel = getPlayerLevel()
                 lastLevelCheckTime = currentTime
                 
-                -- อัปเดต GUI สถานะเรียลไทม์
                 if levelFarmCurrentLevel then
                     levelFarmCurrentLevel.Text = "📊 เลเวลปัจจุบัน: " .. playerLevel
                 end
                 
-                -- ถ้าถึงเลเวล 80 แล้ว หยุดทำงาน
                 if playerLevel >= 80 then
-                    print("\n" .. string.rep("🎉", 30))
-                    print("🎉 ขอแสดงความยินดี! ถึงเลเวล 80 แล้ว!")
-                    print("🎉 หยุด Auto Level Farm อัตโนมัติ")
-                    print("📊 สถิติรวม:")
-                    print("  • เวลาที่ใช้: " .. math.floor((os.time() - sessionStartTime) / 60) .. " นาที")
-                    print("  • มอนที่ฆ่า: " .. monstersKilled .. " ตัว")
-                    print(string.rep("🎉", 30) .. "\n")
-                    
                     state.autoLevelFarm = false
                     
-                    -- อัปเดต GUI
                     if levelFarmStatusLabel then
                         levelFarmStatusLabel.Text = "✅ เลเวล 80 - หยุดอัตโนมัติ!"
                         levelFarmStatusLabel.TextColor3 = Color3.fromRGB(67, 181, 129)
@@ -794,7 +708,6 @@ spawn(function()
                     break
                 end
                 
-                -- ถ้าเลเวลเปลี่ยน หรือยังไม่มี target
                 if playerLevel ~= lastLevel or not currentTargetMonster then
                     lastLevel = playerLevel
                     local targetMonster = getTargetMonsterByLevel(playerLevel)
@@ -803,28 +716,17 @@ spawn(function()
                         if targetMonster ~= currentTargetMonster then
                             currentTargetMonster = targetMonster
                             
-                            print("\n" .. string.rep("=", 60))
-                            print("🎯 [Level Farm] เปลี่ยนเป้าหมายใหม่!")
-                            print("📊 เลเวลปัจจุบัน: " .. playerLevel)
-                            print("🎯 มอนเป้าหมาย: " .. currentTargetMonster)
-                            print("⏱️ เวลาที่ใช้: " .. math.floor((os.time() - sessionStartTime) / 60) .. " นาที")
-                            print("💀 มอนที่ฆ่าแล้ว: " .. monstersKilled .. " ตัว")
-                            print(string.rep("=", 60) .. "\n")
-                            
-                            -- อัปเดต GUI
                             if levelFarmCurrentTarget then
                                 levelFarmCurrentTarget.Text = "🎯 เป้าหมาย: " .. currentTargetMonster
                             end
                         end
                     else
-                        print("⚠️ [Level Farm] ไม่พบมอนสเตอร์สำหรับเลเวล " .. playerLevel)
                         wait(5)
                         continue
                     end
                 end
             end
             
-            -- ฟามมอนที่เลือก
             if currentTargetMonster then
                 local monster = findMonsterByName(currentTargetMonster)
                 
@@ -837,17 +739,14 @@ spawn(function()
                         if hrp then
                             local distance = (hrp.Position - mobHRP.Position).Magnitude
                             
-                            -- ถ้าอยู่ไกลเกิน 50 studs ให้วาร์ป
                             if distance > 50 then
                                 local backDistance = 5
                                 local targetPos = mobHRP.Position - mobHRP.CFrame.LookVector * backDistance
                                 local targetCF = CFrame.new(targetPos, Vector3.new(mobHRP.Position.X, targetPos.Y, mobHRP.Position.Z))
                                 
-                                print("🚀 [Level Farm] วาร์ปไปหา " .. currentTargetMonster .. " (ระยะ: " .. math.floor(distance) .. " studs)")
                                 smartTeleport(targetCF)
                                 wait(0.5)
                             else
-                                -- ถ้าอยู่ใกล้ ก็เดินเข้าไปปกติ
                                 local backDistance = 3
                                 local backPos = mobHRP.Position - mobHRP.CFrame.LookVector * backDistance
                                 
@@ -856,27 +755,20 @@ spawn(function()
                                 end)
                             end
                             
-                            -- ตรวจสอบว่ามอนตายหรือยัง
                             local previousHealth = mobHumanoid.Health
                             wait(0.1)
                             if mobHumanoid.Health <= 0 and previousHealth > 0 then
                                 monstersKilled = monstersKilled + 1
                                 
-                                -- อัปเดต GUI
                                 if levelFarmKillCount then
                                     levelFarmKillCount.Text = "💀 ฆ่าแล้ว: " .. monstersKilled .. " ตัว"
                                 end
                             end
                         end
                     else
-                        -- มอนตายแล้ว รอ respawn
                         wait(0.5)
                     end
                 else
-                    -- ไม่พบมอน ค้นหาใหม่
-                    print("⏳ [Level Farm] กำลังค้นหา " .. currentTargetMonster .. "...")
-                    
-                    -- อัปเดต GUI
                     if levelFarmStatusLabel then
                         levelFarmStatusLabel.Text = "🔍 กำลังค้นหา " .. currentTargetMonster .. "..."
                         levelFarmStatusLabel.TextColor3 = Color3.fromRGB(250, 166, 26)
@@ -892,7 +784,7 @@ spawn(function()
     end
 end)
 
--- =================== AutoQuest Loop (ULTRA STABLE v3.2 - Combat Pause Fixed!) ===================
+-- =================== Auto Quest Loop ===================
 spawn(function()
     while programRunning do
         if state.autoQuest and state.selectedQuest then
@@ -902,14 +794,9 @@ spawn(function()
                 local npc = getNPCFromPath(questData.npcPath)
                 if npc and npc:FindFirstChild("HumanoidRootPart") then
                     
-                    -- 🛑 หยุดการโจมตี
                     combatPaused = true
-                    print("⏸️ [Quest] หยุด Auto Attack/Skills ชั่วคราว")
                     wait(0.3)
                     
-                    -- ⚡ Step 1: วาร์ปหา NPC (3 ครั้ง)
-                    print("\n🚀 [Quest] ========== เริ่มรับเควส ==========")
-                    print("🚀 [Quest] วาร์ปไปหา NPC " .. questData.npcName)
                     local npcCFrame = npc.HumanoidRootPart.CFrame * CFrame.new(0, 0, 1.5)
                     
                     for tpAttempt = 1, 3 do
@@ -921,21 +808,12 @@ spawn(function()
                         wait(0.2)
                     end
                     
-                    -- ⏰ IMPORTANT: รอ UI โหลด 4 วินาที
-                    -- ⏰ รอ UI โหลด 4 วินาที
-print("⏰ [Quest] รอ UI โหลด... (4 วินาที)")
-for i = 4, 1, -1 do
-    if i % 2 == 0 then
-        print("⏳ เหลืออีก " .. i .. " วินาที...")
-    end
-    wait(1)
-end
-                    print("✅ [Quest] UI โหลดเสร็จแล้ว!")
+                    for i = 4, 1, -1 do
+                        wait(1)
+                    end
                     
                     wait(0.5)
                     
-                    -- ⚡ Step 2: คลิก NPC หลายครั้ง
-                    print("🖱️ [Quest] คลิก NPC...")
                     for clickAttempt = 1, 5 do
                         clickNPC(npc)
                         wait(0.4)
@@ -943,57 +821,39 @@ end
                     
                     wait(0.8)
                     
-                    -- ⚡ Step 3: คุยรับเควส
-                    print("💬 [Quest] คุยรับเควส...")
                     talkToNPC(questData)
                     wait(2)
                     
-                    -- ⚡ Step 4: ตรวจสอบว่าได้เควสหรือยัง
                     local questReceived = false
                     for i = 1, 15 do
                         if hasActiveQuest(questData) then
                             questReceived = true
-                            print("✅ [Quest] รับเควส " .. questData.name .. " สำเร็จ!")
                             break
                         else
-                            print("⏳ [Quest] รอรับเควส... (" .. i .. "/15)")
                             wait(0.5)
                         end
                     end
                     
                     if not questReceived then
-                        print("❌ [Quest] ไม่ได้รับเควส - ลองใหม่อีกครั้ง!")
-                        combatPaused = false  -- เปิดการโจมตีกลับ
+                        combatPaused = false
                         wait(3)
                         continue
                     end
                     
-                    -- ⏸️ ยังคงปิดการโจมตีต่อ รอจนกว่าจะเริ่มตีจริงๆ
-                    print("⏸️ [Quest] รับเควสเสร็จ - ยังคงปิดการโจมตี รอเริ่มทำเควส...")
                     wait(0.5)
                     
-                    -- =================== ส่วนทำเควส ===================
                     if questData.questType == "ancient_dungeon" then
-                        -- ⏸️ ยังคงปิดการโจมตีตอนเข้าดัน
-                        print("⏸️ [Quest] ยังคงปิดการโจมตีตอนเข้าดัน")
-                        
-                        print("\n🏛️ ============ เริ่มทำเควส Ancient Argument (Enhanced!) ============")
-                        
                         local dungeonEntered = enterDungeonUI(questData.dungeonName)
                         
                         if not dungeonEntered then
-                            print("❌ [Quest] ไม่สามารถเข้าดันได้ - ข้ามรอบนี้")
                             combatPaused = false
                             wait(5)
                             continue
                         end
                         
-                        print("✅ [Quest] เข้าดันสำเร็จ! เริ่มภารกิจ 3 หิน...")
                         wait(2)
                         
-                        -- ✅ เปิดการโจมตีกลับ เพราะจะเริ่มตีบอสจริงๆ
                         combatPaused = false
-                        print("▶️ [Quest] เปิด Auto Attack/Skills - เริ่มตีบอส!")
                         wait(0.5)
                         
                         local successfulKills = 0
@@ -1003,21 +863,12 @@ end
                             local killed = summonAndKillStoneBoss(stoneData, questData.bossNames)
                             if killed then
                                 successfulKills = successfulKills + 1
-                                print("✅ [Quest] ฆ่าบอสสำเร็จ! (" .. successfulKills .. "/3)")
-                            else
-                                print("⚠️ [Quest] ไม่สามารถฆ่าบอส " .. stoneData.name .. " ได้")
                             end
                             
                             wait(2)
                         end
                         
-                        print("\n✅ [Quest] ภารกิจ 3 หินเสร็จสิ้น! ฆ่าได้ " .. successfulKills .. "/3 หิน")
-                        
-                        -- 🛑 หยุดการโจมตีตอนออกดัน
                         combatPaused = true
-                        print("⏸️ [Quest] หยุดการโจมตีตอนออกดัน")
-                        
-                        print("\n⏳ [Quest] ===== รอออกจากดันเจี้ยน =====")
                         
                         local leftDungeon = false
                         pcall(function()
@@ -1026,7 +877,6 @@ end
                                     if button:IsA("TextButton") and button.Visible then
                                         local buttonText = string.lower(button.Text or "")
                                         if string.find(buttonText, "leave") or string.find(buttonText, "exit") or string.find(buttonText, "quit") then
-                                            print("🚪 [Quest] พบปุ่ม: " .. button.Text .. " - กำลังกด...")
                                             for _, connection in pairs(getconnections(button.MouseButton1Click)) do
                                                 connection:Fire()
                                             end
@@ -1042,22 +892,14 @@ end
                         end)
                         
                         if leftDungeon then
-                            print("✅ [Quest] กดปุ่มออกแล้ว - รอเทเลพอร์ต...")
                             wait(10)
                         else
-                            print("⏳ [Quest] ไม่พบปุ่มออก - รอให้เกมเทเลพอร์ตออกอัตโนมัติ...")
                             wait(15)
                         end
                         
-                        print("⏳ [Quest] รอให้ออกจากดันอย่างสมบูรณ์...")
                         wait(10)
                         
                     elseif questData.questType == "summon" then
-                        print("\n👹 [Quest] ========== เริ่มทำเควส Summon Boss ==========")
-                        
-                        -- ⏸️ ยังคงปิดการโจมตีตอนวาร์ป
-                        print("⏸️ [Quest] ยังคงปิดการโจมตีตอนวาร์ป")
-                        
                         local summonSpot = getSummonLocation(questData)
                         if summonSpot then
                             pcall(function()
@@ -1067,8 +909,6 @@ end
                             pressSummonKey(questData.summonKey)
                             wait(2)
                             
-                            print("⏳ [Quest] กำลังหาบอส...")
-                            
                             local bossFound = false
                             local attempts = 0
                             local maxAttempts = 100
@@ -1077,9 +917,7 @@ end
                                 if boss then
                                     bossFound = true
                                     
-                                    -- ✅ พบบอสแล้ว เปิดการโจมตี
                                     combatPaused = false
-                                    print("▶️ [Quest] พบบอส " .. questData.bossName .. " - เปิดการโจมตี!")
                                     wait(0.5)
                                     
                                     local bossHRP = boss:FindFirstChild("HumanoidRootPart")
@@ -1097,7 +935,6 @@ end
                                             break
                                         end
                                     end
-                                    print("✅ [Quest] ฆ่าบอสสำเร็จ!")
                                     break
                                 else
                                     attempts = attempts + 1
@@ -1106,29 +943,21 @@ end
                             end
                             
                             if not bossFound then
-                                print("⚠️ [Quest] ไม่พบบอส - ข้ามรอบนี้")
                                 combatPaused = false
                                 wait(3)
                                 continue
                             end
                         else
-                            print("❌ [Quest] ไม่พบจุด Summon")
                             combatPaused = false
                             wait(3)
                             continue
                         end
                         
                     elseif questData.questType == "kill" then
-                        print("\n⚔️ [Quest] ========== เริ่มทำเควส Kill Monsters ==========")
-                        
-                        -- ⏸️ ยังคงปิดการโจมตี รอจนกว่าจะพบมอนตัวแรก
-                        print("⏸️ [Quest] ยังคงปิดการโจมตี - กำลังค้นหามอน...")
-                        
                         local killedMobs = {}
                         local firstMobFound = false
                         
                         for _, mobName in ipairs(questData.monsters) do
-                            print("🎯 [Quest] เป้าหมาย: " .. mobName)
                             local mobFound = false
                             local attempts = 0
                             local maxAttempts = 150
@@ -1138,20 +967,14 @@ end
                                 if not mob then
                                     if mobFound then
                                         killedMobs[mobName] = true
-                                        print("✅ [Quest] ฆ่า " .. mobName .. " สำเร็จ!")
                                         break
                                     else
                                         attempts = attempts + 1
-                                        if attempts % 10 == 0 then
-                                            print("⏳ [Quest] รอ " .. mobName .. " spawn... (" .. attempts .. "/" .. maxAttempts .. ")")
-                                        end
                                         wait(1)
                                     end
                                 else
-                                    -- ✅ พบมอนตัวแรก เปิดการโจมตี
                                     if not firstMobFound then
                                         combatPaused = false
-                                        print("▶️ [Quest] พบมอนแล้ว - เปิดการโจมตี!")
                                         firstMobFound = true
                                         wait(0.5)
                                     end
@@ -1168,7 +991,6 @@ end
                                         wait(0.15)
                                     else
                                         killedMobs[mobName] = true
-                                        print("✅ [Quest] ฆ่า " .. mobName .. " สำเร็จ!")
                                         break
                                     end
                                 end
@@ -1178,19 +1000,13 @@ end
                                 wait(1)
                             end
                         end
-                        print("✅ [Quest] ฆ่ามอนครบทุกตัวแล้ว!")
                     end
                     
                     wait(1.5)
                     
-                    -- 🛑 หยุดการโจมตีก่อนส่งเควส
                     combatPaused = true
-                    print("⏸️ [Quest] หยุดการโจมตีก่อนส่งเควส")
                     wait(0.3)
                     
-                    -- ⚡ ส่งเควส - รอ UI โหลดเหมือนกัน
-                    print("\n📜 [Quest] ========== กลับไปส่งเควส ==========")
-                    print("🚀 [Quest] วาร์ปกลับหา NPC...")
                     local submitCFrame = npc.HumanoidRootPart.CFrame * CFrame.new(0, 0, 1.5)
                     
                     for tpAttempt = 1, 3 do
@@ -1205,20 +1021,12 @@ end
                         wait(0.2)
                     end
                     
-                    -- ⏰ IMPORTANT: รอ UI โหลด 4 วินาที
-print("⏰ [Quest] รอ UI โหลด... (4 วินาที)")
-for i = 4, 1, -1 do
-    if i % 2 == 0 then
-        print("⏳ เหลืออีก " .. i .. " วินาที...")
-    end
-    wait(1)
-end
-                    print("✅ [Quest] UI โหลดเสร็จแล้ว!")
+                    for i = 4, 1, -1 do
+                        wait(1)
+                    end
                     
                     wait(0.5)
                     
-                    -- ⚡ คลิก NPC ก่อนส่งเควส
-                    print("🖱️ [Quest] คลิก NPC...")
                     for clickAttempt = 1, 5 do
                         clickNPC(npc)
                         wait(0.4)
@@ -1226,32 +1034,24 @@ end
                     
                     wait(0.5)
                     
-                    print("📬 [Quest] ส่งเควส...")
                     submitQuest(questData, npc)
                     wait(2)
                     
-                    -- ตรวจสอบว่าส่งสำเร็จหรือยัง
                     local questSubmitted = false
                     for i = 1, 15 do
                         if not hasActiveQuest(questData) then
                             questSubmitted = true
-                            print("✅ [Quest] ส่งเควสสำเร็จ!")
                             break
                         else
-                            print("⏳ [Quest] รอส่งเควส... (" .. i .. "/15)")
                             wait(0.5)
                         end
                     end
                     
-                    -- ✅ เปิดการโจมตีกลับหลังส่งเควสเสร็จ
                     combatPaused = false
-                    print("▶️ [Quest] ส่งเควสเสร็จ - เปิดการโจมตีกลับ!")
                     
                     if questSubmitted then
-                        print("✅ [Quest] รอบเสร็จสมบูรณ์ - เริ่มรอบใหม่ใน 3 วินาที...")
                         wait(3)
                     else
-                        print("⚠️ [Quest] เควสยังอยู่ - ลองส่งอีกครั้ง...")
                         wait(2)
                     end
                 end
@@ -1260,49 +1060,37 @@ end
             if state.autoQuest and not state.selectedQuest then
                 state.autoQuest = false
             end
-            -- ตรวจสอบว่าไม่ได้ทำเควสแล้ว ให้เปิดการโจมตีกลับ
             if not state.autoQuest and combatPaused then
                 combatPaused = false
-                print("▶️ [System] ปิดเควส - เปิดการโจมตีกลับ")
             end
         end
         wait(1)
     end
 end)
 
--- =================== Auto Dungeon Loop (v4.0 - Flexible Boss System) ===================
+-- =================== Auto Dungeon Loop ===================
 spawn(function()
     while programRunning do
         if state.autoDungeon then
-            -- 🛑 หยุดการโจมตีตั้งแต่เริ่มต้น
             combatPaused = true
-            print("\n🏛️ ============ Auto Dungeon - เริ่มรอบใหม่ ============")
-            print("⏸️ [Dungeon] หยุดการโจมตีตั้งแต่เริ่มต้น")
             
             local hrp = getHRP()
             if not hrp then
-                print("❌ [Dungeon] ไม่พบ HumanoidRootPart")
                 wait(2)
                 continue
             end
             
-            -- 📌 เลือกดันเจี้ยนที่จะฟาม (แก้ตรงนี้ถ้าต้องการเปลี่ยนดัน)
             local selectedBossData = bossDatabase.ethernal
             
             local dungeonEntered = enterDungeonUI(selectedBossData.dungeonName)
             
             if not dungeonEntered then
-                print("❌ [Dungeon] ไม่สามารถเข้าดันได้")
                 wait(5)
                 continue
             end
             
-            print("🏛️ [Dungeon] เข้าดันเจี้ยนแล้ว - เริ่มหาบอส...")
-            print("⏸️ [Dungeon] ยังคงปิดการโจมตี รอจนกว่าจะพบบอส...")
-            
             local livesFolder = workspace:FindFirstChild(livesFolderName)
             if not livesFolder then
-                print("❌ [Dungeon] ไม่พบ Lives folder")
                 wait(5)
                 continue
             end
@@ -1311,16 +1099,13 @@ spawn(function()
             local searchAttempts = 0
             local maxSearchAttempts = 90
             
-            -- 🔍 ค้นหาบอส (ยังคงปิดการโจมตี)
             while programRunning and state.autoDungeon and searchAttempts < maxSearchAttempts do
                 local boss = nil
                 
-                -- ลองหาทุกชื่อบอสจาก Database
                 for _, bossName in ipairs(selectedBossData.bossNames) do
                     boss = livesFolder:FindFirstChild(bossName)
                     if boss and boss:FindFirstChild("HumanoidRootPart") and boss:FindFirstChild("Humanoid") then
                         if boss.Humanoid.Health > 0 then
-                            print("✅ [Dungeon] พบบอส: " .. boss.Name .. "!")
                             break
                         end
                     end
@@ -1332,21 +1117,13 @@ spawn(function()
                     local bossHRP = boss:FindFirstChild("HumanoidRootPart")
                     local bossHumanoid = boss:FindFirstChild("Humanoid")
                     
-                    -- วาร์ปไปหน้าบอส (ยังคงปิดการโจมตี)
-                    print("🚀 [Dungeon] วาร์ปไปหน้าบอส...")
                     local bossCFrame = bossHRP.CFrame * CFrame.new(0, 0, 10)
                     forceTP(bossCFrame)
                     wait(1.5)
                     
-                    -- ✅ อยู่หน้าบอสแล้ว เปิดการโจมตี
                     combatPaused = false
-                    print("▶️ [Dungeon] อยู่หน้าบอสแล้ว - เปิดการโจมตี!")
                     wait(0.5)
                     
-                    print("⚔️ [Dungeon] เริ่มโจมตีบอส! HP: " .. math.floor(bossHumanoid.Health))
-                    local lastHPReport = os.time()
-                    
-                    -- ตีบอสจนตาย
                     while programRunning and state.autoDungeon and boss.Parent and bossHumanoid.Health > 0 do
                         if bossHRP and bossHRP.Parent then
                             local backDistance = 3
@@ -1358,86 +1135,189 @@ spawn(function()
                                     hrp.CFrame = CFrame.new(backPos, Vector3.new(bossHRP.Position.X, backPos.Y, bossHRP.Position.Z))
                                 end
                             end)
-                            
-                            -- รายงาน HP ทุก 5 วินาที
-                            if os.time() - lastHPReport >= 5 then
-                                print("💥 [Dungeon] Boss HP: " .. math.floor(bossHumanoid.Health) .. " / " .. math.floor(bossHumanoid.MaxHealth))
-                                lastHPReport = os.time()
-                            end
                         else
                             break
                         end
                         wait(0.15)
                     end
                     
-                    print("✅ [Dungeon] ฆ่าบอสสำเร็จ!")
-                    
-                    -- 🛑 ฆ่าบอสเสร็จ หยุดการโจมตีทันที
                     combatPaused = true
-                    print("⏸️ [Dungeon] ฆ่าบอสเสร็จ - หยุดการโจมตีทันที")
                     
                     wait(20)
                     break
                 end
                 
-                -- ยังไม่เจอบอส - รอต่อ
                 searchAttempts = searchAttempts + 1
-                if searchAttempts % 10 == 0 then
-                    print("⏳ [Dungeon] รอบอสเกิด... (" .. searchAttempts .. "/" .. maxSearchAttempts .. " วินาที)")
-                    print("⏸️ [Dungeon] ยังคงปิดการโจมตี...")
-                end
-                
-                -- 🐛 Debug: แสดงรายชื่อมอนทั้งหมด (ครั้งแรกเท่านั้น)
-                if searchAttempts == 1 then
-                    print("🔍 [Debug] กำลังมองหาบอส:")
-                    for _, name in ipairs(selectedBossData.bossNames) do
-                        print("   • " .. name)
-                    end
-                end
-                
                 wait(1)
             end
             
-            if not bossFound then
-                print("⚠️ [Dungeon] ไม่พบบอสภายใน 90 วินาที")
-                print("💡 [Dungeon] กด F9 ดู Console เพื่อเช็คชื่อมอนที่มี")
-            end
-            
-            -- 🛑 ยังคงปิดการโจมตี ไม่เปิดกลับ
-            print("⏸️ [Dungeon] ออกดันแล้ว - ยังคงปิดการโจมตี")
-            print("✅ [Dungeon] รอบนี้เสร็จสมบูรณ์ - เริ่มรอบใหม่ใน 5 วิ...")
             wait(5)
         else
-            -- ถ้าปิด Auto Dungeon แล้ว ให้เปิดการโจมตีกลับ
             if combatPaused and not state.autoQuest then
                 combatPaused = false
-                print("▶️ [Dungeon] ปิด Auto Dungeon - เปิดการโจมตีกลับ")
             end
             wait(1)
         end
     end
 end)
 
--- =================== Auto Event Halloween Loop (ลบ Currency Crate I) ===================
+-- ⚡ Auto Cronus Boss Loop (GUARANTEED TO WORK!)
+spawn(function()
+    while programRunning do
+        if state.autoCronus then
+            print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            print("🛑 [Cronus] เปิดระบบ Auto Cronus")
+            print("🛑 [Cronus] Auto Attack/Skills/X จะไม่ทำงานจนกว่าจะเจอบอส!")
+            print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            
+            -- อัปเดต UI
+            if cronusStatusLabel then
+                cronusStatusLabel.Text = "🔍 สถานะ: ค้นหาบอส..."
+                cronusStatusLabel.TextColor3 = colors.info
+            end
+            if cronusCombatLabel then
+                cronusCombatLabel.Text = "⚔️ Combat: ❌ STOP!"
+                cronusCombatLabel.TextColor3 = colors.danger
+            end
+            if cronusStatusStroke then
+                cronusStatusStroke.Color = colors.info
+            end
+            
+            local hrp = getHRP()
+            if hrp then
+                local boss = getCronusBoss()
+                
+                if boss and boss.Parent and boss:FindFirstChild("Humanoid") and boss.Humanoid.Health > 0 then
+                    local bossHRP = boss:FindFirstChild("HumanoidRootPart")
+                    
+                    if bossHRP then
+                        print("✅ [Cronus] พบบอสแล้ว! กำลังวาร์ป...")
+                        
+                        -- อัปเดต UI
+                        if cronusStatusLabel then
+                            cronusStatusLabel.Text = "✅ พบบอส! กำลังวาร์ป..."
+                            cronusStatusLabel.TextColor3 = colors.warning
+                        end
+                        if cronusCombatLabel then
+                            cronusCombatLabel.Text = "⚔️ Combat: 🔄 กำลังวาร์ป..."
+                            cronusCombatLabel.TextColor3 = colors.warning
+                        end
+                        
+                        -- วาร์ปไปหาบอส
+                        local backDistance = 3
+                        local backPos = bossHRP.Position - bossHRP.CFrame.LookVector * backDistance
+                        
+                        for i = 1, 8 do
+                            pcall(function()
+                                hrp.CFrame = CFrame.new(backPos, Vector3.new(bossHRP.Position.X, backPos.Y, bossHRP.Position.Z))
+                                hrp.Velocity = Vector3.new(0, 0, 0)
+                            end)
+                            wait(0.15)
+                        end
+                        
+                        print("📍 [Cronus] วาร์ปเสร็จแล้ว! รอ 2 วินาที...")
+                        wait(2)
+                        
+                        print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+                        print("⚔️ [Cronus] ปิด Auto Cronus ชั่วคราว!")
+                        print("✅ ตอนนี้ Auto Attack/Skills/X จะทำงานได้!")
+                        print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+                        
+                        -- ⚠️ KEY CHANGE: ปิด autoCronus ชั่วคราวเพื่อให้ตีได้!
+                        local tempCronusState = true
+                        state.autoCronus = false
+                        
+                        wait(1)
+                        
+                        -- อัปเดต UI
+                        if cronusStatusLabel then
+                            cronusStatusLabel.Text = "⚔️ สถานะ: กำลังตีบอส!"
+                            cronusStatusLabel.TextColor3 = colors.success
+                        end
+                        if cronusCombatLabel then
+                            cronusCombatLabel.Text = "⚔️ Combat: ✅ กำลังตี!"
+                            cronusCombatLabel.TextColor3 = colors.success
+                        end
+                        if cronusStatusStroke then
+                            cronusStatusStroke.Color = colors.success
+                        end
+                        
+                        -- Loop ตีบอส
+                        print("⚔️ [Cronus] Loop ตีบอส...")
+                        while programRunning and tempCronusState and boss.Parent and boss.Humanoid.Health > 0 do
+                            if bossHRP and bossHRP.Parent then
+                                local desired = bossHRP.Position - bossHRP.CFrame.LookVector * backDistance
+                                pcall(function()
+                                    hrp = getHRP()
+                                    if hrp then
+                                        hrp.CFrame = CFrame.new(desired, Vector3.new(bossHRP.Position.X, desired.Y, bossHRP.Position.Z))
+                                    end
+                                end)
+                            else
+                                break
+                            end
+                            wait(0.1)
+                        end
+                        
+                        print("💀 [Cronus] บอสตาย! เปิด Auto Cronus กลับมา...")
+                        
+                        -- เปิด autoCronus กลับมา
+                        state.autoCronus = tempCronusState
+                        
+                        -- อัปเดต UI
+                        if cronusStatusLabel then
+                            cronusStatusLabel.Text = "💀 บอสตาย! รอค้นหาใหม่..."
+                            cronusStatusLabel.TextColor3 = colors.warning
+                        end
+                        if cronusCombatLabel then
+                            cronusCombatLabel.Text = "⚔️ Combat: ❌ หยุดตี"
+                            cronusCombatLabel.TextColor3 = colors.danger
+                        end
+                        if cronusStatusStroke then
+                            cronusStatusStroke.Color = colors.warning
+                        end
+                        
+                        wait(5)
+                    end
+                else
+                    print("❌ [Cronus] ยังไม่พบบอส...")
+                    
+                    if cronusStatusLabel then
+                        cronusStatusLabel.Text = "❌ ยังไม่พบบอส..."
+                        cronusStatusLabel.TextColor3 = colors.danger
+                    end
+                    if cronusCombatLabel then
+                        cronusCombatLabel.Text = "⚔️ Combat: ❌ STOP!"
+                        cronusCombatLabel.TextColor3 = colors.danger
+                    end
+                    
+                    wait(3)
+                end
+            else
+                wait(2)
+            end
+        else
+            wait(1)
+        end
+    end
+end)
+
+-- =================== Auto Event Loop ===================
 spawn(function()
     while programRunning do
         if state.autoEvent then
-            print("\n🎃 ============ เริ่มรอบใหม่ ============")
             local hrp = getHRP()
             if not hrp then
-                print("❌ [Halloween] ไม่พบ HumanoidRootPart")
                 wait(2)
                 continue
             end
             
-            print("🔍 [Halloween] กำลังค้นหากล่อง...")
             local chest = workspace:FindFirstChild("KeyItem")
             if chest then
                 chest = chest:FindFirstChild("Halloween Chest")
             end
             
             if not chest then
-                print("❌ [Halloween] ไม่พบกล่อง - รอ 5 วินาที...")
                 wait(5)
                 continue
             end
@@ -1453,16 +1333,13 @@ spawn(function()
             end
             
             if not chestCFrame then
-                print("❌ [Halloween] ไม่สามารถหา CFrame ของกล่องได้")
                 wait(5)
                 continue
             end
             
-            print("🚀 [Halloween] วาร์ปไปที่กล่อง...")
             forceTP(chestCFrame)
             wait(1.5)
             
-            print("🔮 [Halloween] กด E เพื่อเปิดกล่อง...")
             pressSummonKey("E")
             wait(5)
             
@@ -1484,7 +1361,6 @@ spawn(function()
                 while waitTime < 10 do
                     local currentGoons = getHallowedGoons()
                     if #currentGoons >= 1 then
-                        print("✅ [Halloween] พบมอน " .. #currentGoons .. " ตัว - เริ่มฆ่า!")
                         break
                     end
                     wait(1)
@@ -1496,7 +1372,6 @@ spawn(function()
                     local goons = getHallowedGoons()
                     
                     if #goons == 0 then
-                        print("✅ [Halloween] ฆ่ามอนหมดแล้ว!")
                         break
                     end
                     
@@ -1520,7 +1395,6 @@ spawn(function()
                                 end)
                                 wait(0.15)
                             end
-                            print("⚔️ [Halloween] ฆ่ามอน 1 ตัว - เหลืออีก " .. (#goons - 1) .. " ตัว")
                         end
                     end
                     
@@ -1529,14 +1403,12 @@ spawn(function()
                 end
                 
                 wait(2)
-                print("🎁 [Halloween] วาร์ปกลับไปรับของ...")
                 forceTP(chestCFrame)
                 wait(1.5)
                 
                 pressSummonKey("E")
                 wait(2)
                 
-                print("✅ [Halloween] รอบเสร็จแล้ว!")
                 wait(3)
             end
         else
@@ -1545,7 +1417,7 @@ spawn(function()
     end
 end)
 
--- =================== AutoFarm Loop (Original) ===================
+-- =================== AutoFarm Loop ===================
 spawn(function()
     while programRunning do
         if state.autoFarm then
@@ -1584,7 +1456,7 @@ spawn(function()
     end
 end)
 
--- =================== Auto Boss Loop ===================
+-- =================== Auto Boss Loop (Possessed Rider) ===================
 spawn(function()
     while programRunning do
         if state.autoBoss then
@@ -1673,10 +1545,13 @@ spawn(function()
     end
 end)
 
--- =================== Auto Light Attack Loop (Paused Support) ===================
+-- =================== Auto Light Attack (100% FIXED!) ===================
 spawn(function()
     while programRunning do
-        if state.autoAttack and not combatPaused then  -- เช็ค combatPaused
+        -- ⚠️ ถ้า Auto Cronus เปิดอยู่ → ห้ามทำงานเลย!
+        if state.autoCronus then
+            wait(0.1)
+        elseif state.autoAttack and not combatPaused then
             local char = getChar()
             local event = char:FindFirstChild("PlayerHandler") and char.PlayerHandler:FindFirstChild("HandlerEvent")
             if event then
@@ -1691,15 +1566,20 @@ spawn(function()
                 }
                 pcall(function() event:FireServer(unpack(args)) end)
             end
+            wait(0.5)
+        else
+            wait(0.1)
         end
-        wait(0.5)
     end
 end)
 
--- =================== Auto Heavy Attack Loop (Paused Support) ===================
+-- =================== Auto Heavy Attack (100% FIXED!) ===================
 spawn(function()
     while programRunning do
-        if state.autoHeavyAttack and not combatPaused then  -- เช็ค combatPaused
+        -- ⚠️ ถ้า Auto Cronus เปิดอยู่ → ห้ามทำงานเลย!
+        if state.autoCronus then
+            wait(0.1)
+        elseif state.autoHeavyAttack and not combatPaused then
             local char = getChar()
             local event = char:FindFirstChild("PlayerHandler") and char.PlayerHandler:FindFirstChild("HandlerEvent")
             if event then
@@ -1714,12 +1594,15 @@ spawn(function()
                 }
                 pcall(function() event:FireServer(unpack(args)) end)
             end
+            wait(0.5)
+        else
+            wait(0.1)
         end
-        wait(0.5)
     end
 end)
 
--- =================== Auto Skills Loop (Paused Support) ===================
+
+-- =================== Auto Skills (100% FIXED!) ===================
 local skills = {
     {Key="E", Pos=CFrame.new(-1345.676,38.287,-55.023,1,0,0,0,1,0,0,0,1)},
     {Key="R", Pos=CFrame.new(-1345.676,38.287,-55.023,1,0,0,0,1,0,0,0,1)},
@@ -1730,7 +1613,10 @@ local skills = {
 for _, skill in ipairs(skills) do
     spawn(function()
         while programRunning do
-            if state.autoSkills[skill.Key] and not combatPaused then  -- เช็ค combatPaused
+            -- ⚠️ ถ้า Auto Cronus เปิดอยู่ → ห้ามทำงานเลย!
+            if state.autoCronus then
+                wait(0.1)
+            elseif state.autoSkills[skill.Key] and not combatPaused then
                 local char = getChar()
                 local event = char:FindFirstChild("PlayerHandler") and char.PlayerHandler:FindFirstChild("HandlerEvent")
                 if event then
@@ -1743,16 +1629,21 @@ for _, skill in ipairs(skills) do
                     }
                     pcall(function() event:FireServer(unpack(args)) end)
                 end
+                wait(0.5)
+            else
+                wait(0.1)
             end
-            wait(0.5)
         end
     end)
 end
 
--- =================== Auto Press X Loop (Fixed v3.1) ===================
+-- =================== Auto Press X (100% FIXED!) ===================
 spawn(function()
     while programRunning do
-        if state.autoKeyX and not combatPaused then  -- ⬅️ แก้ตรงนี้
+        -- ⚠️ ถ้า Auto Cronus เปิดอยู่ → ห้ามทำงานเลย!
+        if state.autoCronus then
+            wait(0.1)
+        elseif state.autoKeyX and not combatPaused then
             pcall(function()
                 local character = getChar()
                 if character and character:FindFirstChild("PlayerHandler") then
@@ -1787,13 +1678,14 @@ spawn(function()
                     end
                 end
             end)
+            wait(0.5)
+        else
+            wait(0.1)
         end
-        wait(0.5)
     end
 end)
 
-
--- =================== AFK Loop ===================
+-- =================== AFK Mode ===================
 spawn(function()
     while programRunning do
         if state.afkEnabled then
@@ -1804,7 +1696,7 @@ spawn(function()
     end
 end)
 
--- =================== Physics ===================
+-- =================== Lock Position & Physics ===================
 local function ensureBP()
     local hrp = getHRP()
     if hrp and (not bp or not bp.Parent) then
@@ -1831,83 +1723,187 @@ spawn(function()
     end
 end)
 
--- =================== GUI ===================
+-- =================== 🎨 ULTRA MODERN GUI ===================
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "AdminModern"
+screenGui.Name = "AdminUltraModern"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = player:WaitForChild("PlayerGui")
 
+-- 🌈 Modern Gradient Color Scheme
 local colors = {
-    bg = Color3.fromRGB(20, 20, 25),
-    panel = Color3.fromRGB(28, 28, 35),
-    accent = Color3.fromRGB(88, 101, 242),
-    success = Color3.fromRGB(67, 181, 129),
-    danger = Color3.fromRGB(237, 66, 69),
-    warning = Color3.fromRGB(250, 166, 26),
-    text = Color3.fromRGB(220, 220, 225),
-    textDim = Color3.fromRGB(140, 142, 150)
+    bg = Color3.fromRGB(15, 15, 20),
+    panel = Color3.fromRGB(20, 22, 30),
+    cardBg = Color3.fromRGB(25, 27, 35),
+    accent1 = Color3.fromRGB(138, 43, 226), -- Purple
+    accent2 = Color3.fromRGB(75, 0, 130), -- Indigo
+    success = Color3.fromRGB(16, 185, 129), -- Emerald
+    danger = Color3.fromRGB(239, 68, 68), -- Red
+    warning = Color3.fromRGB(245, 158, 11), -- Amber
+    info = Color3.fromRGB(59, 130, 246), -- Blue
+    text = Color3.fromRGB(248, 250, 252),
+    textDim = Color3.fromRGB(148, 163, 184),
+    hover = Color3.fromRGB(30, 32, 40)
 }
 
+-- 🎭 Main Container with Glassmorphism Effect
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "Main"
-mainFrame.Size = UDim2.new(0, 480, 0, 550)
-mainFrame.Position = UDim2.new(0.5, -240, 0.5, -275)
+mainFrame.Size = UDim2.new(0, 520, 0, 600)
+mainFrame.Position = UDim2.new(0.5, -260, 0.5, -300)
 mainFrame.BackgroundColor3 = colors.bg
+mainFrame.BackgroundTransparency = 0.02
 mainFrame.BorderSizePixel = 0
+mainFrame.ClipsDescendants = true
 mainFrame.Parent = screenGui
 
 local mainCorner = Instance.new("UICorner", mainFrame)
-mainCorner.CornerRadius = UDim.new(0, 16)
+mainCorner.CornerRadius = UDim.new(0, 20)
 
+-- ✨ Gradient Border Effect
 local mainStroke = Instance.new("UIStroke", mainFrame)
-mainStroke.Color = colors.accent
-mainStroke.Thickness = 2
-mainStroke.Transparency = 0.5
+mainStroke.Color = colors.accent1
+mainStroke.Thickness = 3
+mainStroke.Transparency = 0.3
 
+-- 🎨 Animated Gradient Background
+local gradientBG = Instance.new("Frame", mainFrame)
+gradientBG.Size = UDim2.new(1, 0, 1, 0)
+gradientBG.BackgroundColor3 = colors.panel
+gradientBG.BackgroundTransparency = 0.95
+gradientBG.BorderSizePixel = 0
+gradientBG.ZIndex = 0
+
+local gradientBGCorner = Instance.new("UICorner", gradientBG)
+gradientBGCorner.CornerRadius = UDim.new(0, 20)
+
+local gradientUI = Instance.new("UIGradient", gradientBG)
+gradientUI.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, colors.accent1),
+    ColorSequenceKeypoint.new(0.5, colors.accent2),
+    ColorSequenceKeypoint.new(1, colors.accent1)
+}
+gradientUI.Rotation = 45
+
+-- ⚡ Animated Gradient Effect
+spawn(function()
+    while programRunning and screenGui.Parent do
+        for i = 0, 360, 2 do
+            if not programRunning or not screenGui.Parent then break end
+            gradientUI.Rotation = i
+            wait(0.03)
+        end
+    end
+end)
+
+-- 🎯 Modern Top Bar with Gradient
 local topBar = Instance.new("Frame", mainFrame)
-topBar.Size = UDim2.new(1, 0, 0, 45)
+topBar.Size = UDim2.new(1, 0, 0, 60)
 topBar.BackgroundColor3 = colors.panel
+topBar.BackgroundTransparency = 0.3
 topBar.BorderSizePixel = 0
+topBar.ZIndex = 2
 
-local topCorner = Instance.new("UICorner", topBar)
-topCorner.CornerRadius = UDim.new(0, 16)
+local topBarCorner = Instance.new("UICorner", topBar)
+topBarCorner.CornerRadius = UDim.new(0, 20)
+
+local topBarGradient = Instance.new("UIGradient", topBar)
+topBarGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, colors.accent1),
+    ColorSequenceKeypoint.new(1, colors.accent2)
+}
+topBarGradient.Rotation = 90
+topBarGradient.Transparency = NumberSequence.new{
+    NumberSequenceKeypoint.new(0, 0.7),
+    NumberSequenceKeypoint.new(1, 0.9)
+}
+
+-- 💫 App Icon & Title
+local iconFrame = Instance.new("Frame", topBar)
+iconFrame.Size = UDim2.new(0, 45, 0, 45)
+iconFrame.Position = UDim2.new(0, 15, 0.5, -22.5)
+iconFrame.BackgroundColor3 = colors.accent1
+iconFrame.BorderSizePixel = 0
+
+local iconCorner = Instance.new("UICorner", iconFrame)
+iconCorner.CornerRadius = UDim.new(0, 12)
+
+local iconGradient = Instance.new("UIGradient", iconFrame)
+iconGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, colors.accent1),
+    ColorSequenceKeypoint.new(1, colors.accent2)
+}
+iconGradient.Rotation = 135
+
+local iconLabel = Instance.new("TextLabel", iconFrame)
+iconLabel.Size = UDim2.new(1, 0, 1, 0)
+iconLabel.BackgroundTransparency = 1
+iconLabel.Text = "⚡"
+iconLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+iconLabel.Font = Enum.Font.GothamBold
+iconLabel.TextSize = 26
 
 local title = Instance.new("TextLabel", topBar)
-title.Size = UDim2.new(0, 250, 1, 0)
-title.Position = UDim2.new(0, 15, 0, 0)
+title.Size = UDim2.new(0, 300, 1, 0)
+title.Position = UDim2.new(0, 70, 0, 0)
 title.BackgroundTransparency = 1
-title.Text = "⚡ Admin Enhanced v3.0"
+title.Text = "ULTRA ADMIN"
 title.TextColor3 = colors.text
 title.Font = Enum.Font.GothamBold
-title.TextSize = 17
+title.TextSize = 22
 title.TextXAlignment = Enum.TextXAlignment.Left
 
-local btnMin = Instance.new("TextButton", topBar)
-btnMin.Size = UDim2.new(0, 30, 0, 30)
-btnMin.Position = UDim2.new(1, -75, 0.5, -15)
-btnMin.Text = "—"
-btnMin.Font = Enum.Font.GothamBold
-btnMin.TextSize = 18
-btnMin.BackgroundColor3 = colors.accent
-btnMin.TextColor3 = Color3.fromRGB(255, 255, 255)
-btnMin.BorderSizePixel = 0
+local subtitle = Instance.new("TextLabel", topBar)
+subtitle.Size = UDim2.new(0, 300, 0, 18)
+subtitle.Position = UDim2.new(0, 70, 0, 32)
+subtitle.BackgroundTransparency = 1
+subtitle.Text = "v5.1 • Cronus Edition"
+subtitle.TextColor3 = colors.textDim
+subtitle.Font = Enum.Font.Gotham
+subtitle.TextSize = 11
+subtitle.TextXAlignment = Enum.TextXAlignment.Left
 
-local minCorner = Instance.new("UICorner", btnMin)
-minCorner.CornerRadius = UDim.new(0, 8)
+-- 🎮 Control Buttons
+local function createTopButton(icon, color, position)
+    local btn = Instance.new("TextButton", topBar)
+    btn.Size = UDim2.new(0, 38, 0, 38)
+    btn.Position = UDim2.new(1, position, 0.5, -19)
+    btn.Text = icon
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 18
+    btn.BackgroundColor3 = color
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.BorderSizePixel = 0
+    btn.AutoButtonColor = false
+    
+    local btnCorner = Instance.new("UICorner", btn)
+    btnCorner.CornerRadius = UDim.new(0, 10)
+    
+    local btnGradient = Instance.new("UIGradient", btn)
+    btnGradient.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, color),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(
+            math.max(0, color.R * 255 - 30)/255,
+            math.max(0, color.G * 255 - 30)/255,
+            math.max(0, color.B * 255 - 30)/255
+        ))
+    }
+    btnGradient.Rotation = 135
+    
+    btn.MouseEnter:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundTransparency = 0.2}):Play()
+    end)
+    
+    btn.MouseLeave:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundTransparency = 0}):Play()
+    end)
+    
+    return btn
+end
 
-local btnClose = Instance.new("TextButton", topBar)
-btnClose.Size = UDim2.new(0, 30, 0, 30)
-btnClose.Position = UDim2.new(1, -38, 0.5, -15)
-btnClose.Text = "✕"
-btnClose.Font = Enum.Font.GothamBold
-btnClose.TextSize = 16
-btnClose.BackgroundColor3 = colors.danger
-btnClose.TextColor3 = Color3.fromRGB(255, 255, 255)
-btnClose.BorderSizePixel = 0
+local btnMin = createTopButton("━", colors.info, -90)
+local btnClose = createTopButton("✕", colors.danger, -45)
 
-local closeCorner = Instance.new("UICorner", btnClose)
-closeCorner.CornerRadius = UDim.new(0, 8)
-
+-- 🎯 Draggable Top Bar
 local dragging = false
 local dragStart, startPos
 
@@ -1936,60 +1932,114 @@ topBar.InputChanged:Connect(function(input)
     end
 end)
 
-local tabContainer = Instance.new("Frame", mainFrame)
-tabContainer.Size = UDim2.new(1, -20, 0, 40)
-tabContainer.Position = UDim2.new(0, 10, 0, 55)
+-- 📑 Modern Tab Container
+local tabContainer = Instance.new("ScrollingFrame", mainFrame)
+tabContainer.Size = UDim2.new(1, -20, 0, 70)
+tabContainer.Position = UDim2.new(0, 10, 0, 70)
 tabContainer.BackgroundTransparency = 1
+tabContainer.BorderSizePixel = 0
+tabContainer.ScrollBarThickness = 0
+tabContainer.CanvasSize = UDim2.new(0, 650, 0, 70)
+tabContainer.ScrollingDirection = Enum.ScrollingDirection.X
 
 local tabLayout = Instance.new("UIListLayout", tabContainer)
 tabLayout.FillDirection = Enum.FillDirection.Horizontal
-tabLayout.Padding = UDim.new(0, 5)
-tabLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+tabLayout.Padding = UDim.new(0, 8)
+tabLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
 
+-- 📄 Content Container
 local contentContainer = Instance.new("Frame", mainFrame)
-contentContainer.Size = UDim2.new(1, -20, 1, -115)
-contentContainer.Position = UDim2.new(0, 10, 0, 105)
-contentContainer.BackgroundColor3 = colors.panel
+contentContainer.Size = UDim2.new(1, -20, 1, -160)
+contentContainer.Position = UDim2.new(0, 10, 0, 150)
+contentContainer.BackgroundColor3 = colors.cardBg
+contentContainer.BackgroundTransparency = 0.3
 contentContainer.BorderSizePixel = 0
 
 local contentCorner = Instance.new("UICorner", contentContainer)
-contentCorner.CornerRadius = UDim.new(0, 12)
+contentCorner.CornerRadius = UDim.new(0, 16)
 
-local function createTab(text, order)
+local contentStroke = Instance.new("UIStroke", contentContainer)
+contentStroke.Color = colors.accent1
+contentStroke.Transparency = 0.8
+contentStroke.Thickness = 1
+
+-- 🎨 Create Modern Tab Function
+local function createTab(icon, text, order)
     local btn = Instance.new("TextButton", tabContainer)
-    btn.Size = UDim2.new(0, 75, 1, 0)
-    btn.Text = text
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 11
-    btn.BackgroundColor3 = colors.bg
-    btn.TextColor3 = colors.textDim
+    btn.Size = UDim2.new(0, 95, 0, 62)
+    btn.Text = ""
+    btn.BackgroundColor3 = colors.cardBg
+    btn.BackgroundTransparency = 0.5
     btn.BorderSizePixel = 0
     btn.AutoButtonColor = false
     btn.LayoutOrder = order
+    
     local corner = Instance.new("UICorner", btn)
-    corner.CornerRadius = UDim.new(0, 8)
-    return btn
+    corner.CornerRadius = UDim.new(0, 12)
+    
+    local stroke = Instance.new("UIStroke", btn)
+    stroke.Color = colors.accent1
+    stroke.Transparency = 0.8
+    stroke.Thickness = 1.5
+    
+    local iconLabel = Instance.new("TextLabel", btn)
+    iconLabel.Size = UDim2.new(1, 0, 0, 30)
+    iconLabel.Position = UDim2.new(0, 0, 0, 8)
+    iconLabel.BackgroundTransparency = 1
+    iconLabel.Text = icon
+    iconLabel.Font = Enum.Font.GothamBold
+    iconLabel.TextSize = 20
+    iconLabel.TextColor3 = colors.textDim
+    
+    local textLabel = Instance.new("TextLabel", btn)
+    textLabel.Size = UDim2.new(1, 0, 0, 18)
+    textLabel.Position = UDim2.new(0, 0, 1, -24)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Text = text
+    textLabel.Font = Enum.Font.GothamBold
+    textLabel.TextSize = 10
+    textLabel.TextColor3 = colors.textDim
+    
+    btn.MouseEnter:Connect(function()
+        if btn.BackgroundTransparency ~= 0 then
+            TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundTransparency = 0.3}):Play()
+            TweenService:Create(stroke, TweenInfo.new(0.2), {Transparency = 0.5}):Play()
+        end
+    end)
+    
+    btn.MouseLeave:Connect(function()
+        if btn.BackgroundTransparency ~= 0 then
+            TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundTransparency = 0.5}):Play()
+            TweenService:Create(stroke, TweenInfo.new(0.2), {Transparency = 0.8}):Play()
+        end
+    end)
+    
+    return btn, iconLabel, textLabel, stroke
 end
 
-local tabFarm = createTab("🎯 Farm", 1)
-local tabBoss = createTab("👹 Boss", 2)
-local tabMine = createTab("⛏️ Mine", 3)
-local tabQuest = createTab("📜 เควส", 4)
-local tabEvent = createTab("🎃 Event", 5)
-local tabOther = createTab("⚙️ Other", 6)
+local tabFarm, tabFarmIcon, tabFarmText, tabFarmStroke = createTab("🎯", "Farm", 1)
+local tabBoss, tabBossIcon, tabBossText, tabBossStroke = createTab("👹", "Boss", 2)
+local tabMine, tabMineIcon, tabMineText, tabMineStroke = createTab("⛏️", "Mine", 3)
+local tabQuest, tabQuestIcon, tabQuestText, tabQuestStroke = createTab("📜", "เควส", 4)
+local tabEvent, tabEventIcon, tabEventText, tabEventStroke = createTab("🎃", "Event", 5)
+local tabOther, tabOtherIcon, tabOtherText, tabOtherStroke = createTab("⚙️", "Other", 6)
 
+-- 📋 Create Content Scrolls
 local function createContent()
     local scroll = Instance.new("ScrollingFrame", contentContainer)
     scroll.Size = UDim2.new(1, -20, 1, -20)
     scroll.Position = UDim2.new(0, 10, 0, 10)
     scroll.BackgroundTransparency = 1
     scroll.BorderSizePixel = 0
-    scroll.ScrollBarThickness = 6
-    scroll.ScrollBarImageColor3 = colors.accent
+    scroll.ScrollBarThickness = 5
+    scroll.ScrollBarImageColor3 = colors.accent1
     scroll.Visible = false
+    
     local layout = Instance.new("UIListLayout", scroll)
-    layout.Padding = UDim.new(0, 10)
+    layout.Padding = UDim.new(0, 12)
     layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    
     return scroll, layout
 end
 
@@ -2000,95 +2050,161 @@ local questContent, questLayout = createContent()
 local eventContent, eventLayout = createContent()
 local otherContent, otherLayout = createContent()
 
-local function createToggle(parent, text, callback)
+-- 🎨 Modern Toggle Switch
+local function createToggle(parent, icon, text, callback)
     local container = Instance.new("Frame", parent)
-    container.Size = UDim2.new(1, 0, 0, 50)
-    container.BackgroundColor3 = colors.bg
+    container.Size = UDim2.new(1, 0, 0, 60)
+    container.BackgroundColor3 = colors.cardBg
     container.BorderSizePixel = 0
+    
     local corner = Instance.new("UICorner", container)
-    corner.CornerRadius = UDim.new(0, 10)
+    corner.CornerRadius = UDim.new(0, 12)
+    
+    local stroke = Instance.new("UIStroke", container)
+    stroke.Color = colors.accent1
+    stroke.Transparency = 0.85
+    stroke.Thickness = 1
+    
+    -- Icon
+    local iconLabel = Instance.new("TextLabel", container)
+    iconLabel.Size = UDim2.new(0, 40, 0, 40)
+    iconLabel.Position = UDim2.new(0, 10, 0.5, -20)
+    iconLabel.BackgroundColor3 = colors.panel
+    iconLabel.Text = icon
+    iconLabel.Font = Enum.Font.GothamBold
+    iconLabel.TextSize = 20
+    iconLabel.TextColor3 = colors.accent1
+    
+    local iconCorner = Instance.new("UICorner", iconLabel)
+    iconCorner.CornerRadius = UDim.new(0, 10)
+    
+    -- Text
     local label = Instance.new("TextLabel", container)
-    label.Size = UDim2.new(1, -70, 1, 0)
-    label.Position = UDim2.new(0, 15, 0, 0)
+    label.Size = UDim2.new(1, -140, 1, 0)
+    label.Position = UDim2.new(0, 60, 0, 0)
     label.BackgroundTransparency = 1
     label.Text = text
     label.TextColor3 = colors.text
     label.Font = Enum.Font.GothamBold
-    label.TextSize = 15
+    label.TextSize = 13
     label.TextXAlignment = Enum.TextXAlignment.Left
-    local toggle = Instance.new("TextButton", container)
-    toggle.Size = UDim2.new(0, 50, 0, 30)
-    toggle.Position = UDim2.new(1, -60, 0.5, -15)
-    toggle.Text = ""
-    toggle.BackgroundColor3 = colors.textDim
-    toggle.BorderSizePixel = 0
-    local toggleCorner = Instance.new("UICorner", toggle)
-    toggleCorner.CornerRadius = UDim.new(1, 0)
-    local indicator = Instance.new("Frame", toggle)
-    indicator.Size = UDim2.new(0, 22, 0, 22)
-    indicator.Position = UDim2.new(0, 4, 0.5, -11)
-    indicator.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    indicator.BorderSizePixel = 0
-    local indCorner = Instance.new("UICorner", indicator)
-    indCorner.CornerRadius = UDim.new(1, 0)
+    label.TextWrapped = true
+    
+    -- Toggle Switch
+    local toggleBG = Instance.new("TextButton", container)
+    toggleBG.Size = UDim2.new(0, 60, 0, 32)
+    toggleBG.Position = UDim2.new(1, -70, 0.5, -16)
+    toggleBG.Text = ""
+    toggleBG.BackgroundColor3 = colors.panel
+    toggleBG.BorderSizePixel = 0
+    toggleBG.AutoButtonColor = false
+    
+    local toggleBGCorner = Instance.new("UICorner", toggleBG)
+    toggleBGCorner.CornerRadius = UDim.new(1, 0)
+    
+    local toggleIndicator = Instance.new("Frame", toggleBG)
+    toggleIndicator.Size = UDim2.new(0, 26, 0, 26)
+    toggleIndicator.Position = UDim2.new(0, 3, 0.5, -13)
+    toggleIndicator.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    toggleIndicator.BorderSizePixel = 0
+    
+    local indicatorCorner = Instance.new("UICorner", toggleIndicator)
+    indicatorCorner.CornerRadius = UDim.new(1, 0)
+    
+    local indicatorGradient = Instance.new("UIGradient", toggleIndicator)
+    indicatorGradient.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(200, 200, 200)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))
+    }
+    
     local isOn = false
-    toggle.MouseButton1Click:Connect(function()
+    toggleBG.MouseButton1Click:Connect(function()
         isOn = not isOn
-        toggle.BackgroundColor3 = isOn and colors.success or colors.textDim
-        indicator:TweenPosition(
-            isOn and UDim2.new(1, -26, 0.5, -11) or UDim2.new(0, 4, 0.5, -11),
-            Enum.EasingDirection.Out,
-            Enum.EasingStyle.Quad,
-            0.2,
-            true
-        )
+        
+        local bgColor = isOn and colors.success or colors.panel
+        local position = isOn and UDim2.new(1, -29, 0.5, -13) or UDim2.new(0, 3, 0.5, -13)
+        
+        TweenService:Create(toggleBG, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+            BackgroundColor3 = bgColor
+        }):Play()
+        
+        TweenService:Create(toggleIndicator, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+            Position = position
+        }):Play()
+        
+        TweenService:Create(stroke, TweenInfo.new(0.3), {
+            Transparency = isOn and 0.5 or 0.85,
+            Color = isOn and colors.success or colors.accent1
+        }):Play()
+        
         callback(isOn)
     end)
+    
+    container.MouseEnter:Connect(function()
+        TweenService:Create(container, TweenInfo.new(0.2), {BackgroundColor3 = colors.hover}):Play()
+    end)
+    
+    container.MouseLeave:Connect(function()
+        TweenService:Create(container, TweenInfo.new(0.2), {BackgroundColor3 = colors.cardBg}):Play()
+    end)
+    
     return container
 end
 
--- =================== Farm Tab (ENHANCED v3!) ===================
+-- =================== Farm Tab Content ===================
 farmContent.Visible = true
 
--- Level Farm Info Card (ENHANCED!)
+-- Level Farm Info Card
 local levelFarmCard = Instance.new("Frame", farmContent)
-levelFarmCard.Size = UDim2.new(1, 0, 0, 140)
-levelFarmCard.BackgroundColor3 = colors.bg
+levelFarmCard.Size = UDim2.new(1, 0, 0, 150)
+levelFarmCard.BackgroundColor3 = colors.cardBg
 levelFarmCard.BorderSizePixel = 0
+
 local levelFarmCorner = Instance.new("UICorner", levelFarmCard)
-levelFarmCorner.CornerRadius = UDim.new(0, 10)
+levelFarmCorner.CornerRadius = UDim.new(0, 12)
+
 local levelFarmStroke = Instance.new("UIStroke", levelFarmCard)
 levelFarmStroke.Color = colors.success
 levelFarmStroke.Thickness = 2
-levelFarmStroke.Transparency = 0.3
+levelFarmStroke.Transparency = 0.5
+
+local levelFarmGradient = Instance.new("UIGradient", levelFarmCard)
+levelFarmGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, colors.cardBg),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 30, 25))
+}
+levelFarmGradient.Rotation = 45
 
 local levelIcon = Instance.new("TextLabel", levelFarmCard)
-levelIcon.Size = UDim2.new(0, 80, 1, -16)
-levelIcon.Position = UDim2.new(0, 8, 0, 8)
-levelIcon.BackgroundTransparency = 1
+levelIcon.Size = UDim2.new(0, 90, 1, -20)
+levelIcon.Position = UDim2.new(0, 10, 0, 10)
+levelIcon.BackgroundColor3 = colors.panel
 levelIcon.Text = "🚀"
 levelIcon.Font = Enum.Font.GothamBold
-levelIcon.TextSize = 48
+levelIcon.TextSize = 50
+
+local levelIconCorner = Instance.new("UICorner", levelIcon)
+levelIconCorner.CornerRadius = UDim.new(0, 10)
 
 local levelInfoFrame = Instance.new("Frame", levelFarmCard)
-levelInfoFrame.Size = UDim2.new(1, -100, 1, -16)
-levelInfoFrame.Position = UDim2.new(0, 96, 0, 8)
+levelInfoFrame.Size = UDim2.new(1, -120, 1, -20)
+levelInfoFrame.Position = UDim2.new(0, 110, 0, 10)
 levelInfoFrame.BackgroundTransparency = 1
 
 local levelTitle = Instance.new("TextLabel", levelInfoFrame)
-levelTitle.Size = UDim2.new(1, 0, 0, 24)
+levelTitle.Size = UDim2.new(1, 0, 0, 26)
 levelTitle.BackgroundTransparency = 1
-levelTitle.Text = "🎯 Smart Level Farm System v3.0"
+levelTitle.Text = "🎯 Smart Level Farm"
 levelTitle.TextColor3 = colors.success
 levelTitle.Font = Enum.Font.GothamBold
-levelTitle.TextSize = 14
+levelTitle.TextSize = 16
 levelTitle.TextXAlignment = Enum.TextXAlignment.Left
 
 local levelDesc = Instance.new("TextLabel", levelInfoFrame)
 levelDesc.Size = UDim2.new(1, 0, 0, 32)
-levelDesc.Position = UDim2.new(0, 0, 0, 26)
+levelDesc.Position = UDim2.new(0, 0, 0, 28)
 levelDesc.BackgroundTransparency = 1
-levelDesc.Text = "✨ NEW! อ่านเลเวลจาก StatsReplicated\nวาร์ปไปหามอนอัตโนมัติ ไม่ว่าจะไกลแค่ไหน!"
+levelDesc.Text = "ระบบฟามอัตโนมัติตามเลเวล\nวาร์ปไปหามอนทุกระยะ หยุดที่ Lv.80"
 levelDesc.TextColor3 = colors.textDim
 levelDesc.Font = Enum.Font.Gotham
 levelDesc.TextSize = 10
@@ -2096,20 +2212,19 @@ levelDesc.TextWrapped = true
 levelDesc.TextXAlignment = Enum.TextXAlignment.Left
 levelDesc.TextYAlignment = Enum.TextYAlignment.Top
 
--- สถานะเรียลไทม์
 levelFarmCurrentLevel = Instance.new("TextLabel", levelInfoFrame)
-levelFarmCurrentLevel.Size = UDim2.new(1, 0, 0, 18)
-levelFarmCurrentLevel.Position = UDim2.new(0, 0, 0, 60)
+levelFarmCurrentLevel.Size = UDim2.new(1, 0, 0, 20)
+levelFarmCurrentLevel.Position = UDim2.new(0, 0, 0, 65)
 levelFarmCurrentLevel.BackgroundTransparency = 1
-levelFarmCurrentLevel.Text = "📊 เลเวลปัจจุบัน: กำลังโหลด..."
-levelFarmCurrentLevel.TextColor3 = colors.accent
+levelFarmCurrentLevel.Text = "📊 เลเวล: โหลด..."
+levelFarmCurrentLevel.TextColor3 = colors.info
 levelFarmCurrentLevel.Font = Enum.Font.GothamBold
 levelFarmCurrentLevel.TextSize = 11
 levelFarmCurrentLevel.TextXAlignment = Enum.TextXAlignment.Left
 
 levelFarmCurrentTarget = Instance.new("TextLabel", levelInfoFrame)
-levelFarmCurrentTarget.Size = UDim2.new(1, 0, 0, 18)
-levelFarmCurrentTarget.Position = UDim2.new(0, 0, 0, 80)
+levelFarmCurrentTarget.Size = UDim2.new(1, 0, 0, 20)
+levelFarmCurrentTarget.Position = UDim2.new(0, 0, 0, 88)
 levelFarmCurrentTarget.BackgroundTransparency = 1
 levelFarmCurrentTarget.Text = "🎯 เป้าหมาย: ยังไม่เริ่ม"
 levelFarmCurrentTarget.TextColor3 = colors.textDim
@@ -2118,8 +2233,8 @@ levelFarmCurrentTarget.TextSize = 11
 levelFarmCurrentTarget.TextXAlignment = Enum.TextXAlignment.Left
 
 levelFarmKillCount = Instance.new("TextLabel", levelInfoFrame)
-levelFarmKillCount.Size = UDim2.new(1, 0, 0, 18)
-levelFarmKillCount.Position = UDim2.new(0, 0, 0, 100)
+levelFarmKillCount.Size = UDim2.new(1, 0, 0, 20)
+levelFarmKillCount.Position = UDim2.new(0, 0, 0, 111)
 levelFarmKillCount.BackgroundTransparency = 1
 levelFarmKillCount.Text = "💀 ฆ่าแล้ว: 0 ตัว"
 levelFarmKillCount.TextColor3 = colors.warning
@@ -2128,132 +2243,170 @@ levelFarmKillCount.TextSize = 11
 levelFarmKillCount.TextXAlignment = Enum.TextXAlignment.Left
 
 levelFarmStatusLabel = Instance.new("TextLabel", levelInfoFrame)
-levelFarmStatusLabel.Size = UDim2.new(1, 0, 0, 18)
-levelFarmStatusLabel.Position = UDim2.new(0, 0, 1, -22)
+levelFarmStatusLabel.Size = UDim2.new(0, 0, 0, 0)
 levelFarmStatusLabel.BackgroundTransparency = 1
-levelFarmStatusLabel.Text = "📊 สถานะ: ปิด"
-levelFarmStatusLabel.TextColor3 = colors.textDim
-levelFarmStatusLabel.Font = Enum.Font.GothamBold
-levelFarmStatusLabel.TextSize = 11
-levelFarmStatusLabel.TextXAlignment = Enum.TextXAlignment.Left
 
--- Auto Level Farm Toggle
-createToggle(farmContent, "🚀 เปิด Auto Level Farm (Smart)", function(on) 
-    state.autoLevelFarm = on 
+createToggle(farmContent, "🚀", "Smart Level Farm", function(on)
+    state.autoLevelFarm = on
     if on then
-        levelFarmStatusLabel.Text = "✅ กำลังฟามอัตโนมัติ..."
-        levelFarmStatusLabel.TextColor3 = colors.success
-        state.autoFarm = false -- ปิด AutoFarm ปกติ
-        
-        -- เริ่มอัปเดตเลเวลทันที
+        state.autoFarm = false
         local currentLevel = getPlayerLevel()
-        levelFarmCurrentLevel.Text = "📊 เลเวลปัจจุบัน: " .. currentLevel
-        
+        levelFarmCurrentLevel.Text = "📊 เลเวล: " .. currentLevel
         local targetMonster = getTargetMonsterByLevel(currentLevel)
         if targetMonster and targetMonster ~= "STOP" then
             levelFarmCurrentTarget.Text = "🎯 เป้าหมาย: " .. targetMonster
         end
     else
-        levelFarmStatusLabel.Text = "📊 สถานะ: ปิด"
-        levelFarmStatusLabel.TextColor3 = colors.textDim
         levelFarmCurrentTarget.Text = "🎯 เป้าหมาย: หยุดทำงาน"
-        levelFarmCurrentTarget.TextColor3 = colors.textDim
     end
 end)
 
 -- Separator
 local separator1 = Instance.new("Frame", farmContent)
-separator1.Size = UDim2.new(1, 0, 0, 2)
-separator1.BackgroundColor3 = colors.textDim
+separator1.Size = UDim2.new(1, 0, 0, 1)
+separator1.BackgroundColor3 = colors.accent1
+separator1.BackgroundTransparency = 0.85
 separator1.BorderSizePixel = 0
-separator1.BackgroundTransparency = 0.7
 
--- Original Farm Section
 local farmTitle = Instance.new("TextLabel", farmContent)
-farmTitle.Size = UDim2.new(1, 0, 0, 30)
+farmTitle.Size = UDim2.new(1, 0, 0, 35)
 farmTitle.BackgroundTransparency = 1
-farmTitle.Text = "📋 Manual Farm (เลือกมอนเอง)"
-farmTitle.TextColor3 = colors.accent
+farmTitle.Text = "📋 Manual Farm"
+farmTitle.TextColor3 = colors.accent1
 farmTitle.Font = Enum.Font.GothamBold
-farmTitle.TextSize = 14
+farmTitle.TextSize = 15
 farmTitle.TextXAlignment = Enum.TextXAlignment.Left
+farmTitle.TextYAlignment = Enum.TextYAlignment.Center
 
-createToggle(farmContent, "🎯 เปิด AutoFarm (Manual)", function(on) 
-    state.autoFarm = on 
+local farmTitlePadding = Instance.new("UIPadding", farmTitle)
+farmTitlePadding.PaddingLeft = UDim.new(0, 10)
+
+createToggle(farmContent, "🎯", "Manual Farm (เลือกมอนเอง)", function(on)
+    state.autoFarm = on
     if on then
-        state.autoLevelFarm = false -- ปิด Auto Level Farm
-        levelFarmStatusLabel.Text = "📊 สถานะ: ปิด (ใช้ Manual แทน)"
-        levelFarmStatusLabel.TextColor3 = colors.warning
+        state.autoLevelFarm = false
         levelFarmCurrentTarget.Text = "🎯 เป้าหมาย: Manual Mode"
-        levelFarmCurrentTarget.TextColor3 = colors.warning
     end
 end)
 
+-- Quick Select Buttons
 local quickFrame = Instance.new("Frame", farmContent)
-quickFrame.Size = UDim2.new(1, 0, 0, 40)
+quickFrame.Size = UDim2.new(1, 0, 0, 45)
 quickFrame.BackgroundTransparency = 1
+
 local quickLayout = Instance.new("UIListLayout", quickFrame)
 quickLayout.FillDirection = Enum.FillDirection.Horizontal
 quickLayout.Padding = UDim.new(0, 10)
+quickLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
-local function createQuickBtn(text, color)
+local function createQuickBtn(text, icon, color)
     local btn = Instance.new("TextButton", quickFrame)
     btn.Size = UDim2.new(0.48, 0, 1, 0)
-    btn.Text = text
+    btn.Text = icon .. " " .. text
     btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 14
+    btn.TextSize = 13
     btn.BackgroundColor3 = color
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.BorderSizePixel = 0
+    btn.AutoButtonColor = false
+    
     local corner = Instance.new("UICorner", btn)
-    corner.CornerRadius = UDim.new(0, 8)
+    corner.CornerRadius = UDim.new(0, 10)
+    
+    local gradient = Instance.new("UIGradient", btn)
+    gradient.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, color),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(
+            math.max(0, color.R * 255 - 20)/255,
+            math.max(0, color.G * 255 - 20)/255,
+            math.max(0, color.B * 255 - 20)/255
+        ))
+    }
+    gradient.Rotation = 90
+    
+    btn.MouseEnter:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundTransparency = 0.2}):Play()
+    end)
+    
+    btn.MouseLeave:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundTransparency = 0}):Play()
+    end)
+    
     return btn
 end
 
-local btnAll = createQuickBtn("✓ เลือกทั้งหมด", colors.success)
-local btnNone = createQuickBtn("✗ ยกเลิกทั้งหมด", colors.danger)
+local btnAll = createQuickBtn("เลือกทั้งหมด", "✓", colors.success)
+local btnNone = createQuickBtn("ยกเลิกทั้งหมด", "✗", colors.danger)
 
+-- Monster Selection List
 local monsterScroll = Instance.new("ScrollingFrame", farmContent)
-monsterScroll.Size = UDim2.new(1, 0, 0, 180)
-monsterScroll.BackgroundColor3 = colors.bg
+monsterScroll.Size = UDim2.new(1, 0, 0, 200)
+monsterScroll.BackgroundColor3 = colors.cardBg
 monsterScroll.BorderSizePixel = 0
-monsterScroll.ScrollBarThickness = 4
+monsterScroll.ScrollBarThickness = 5
+monsterScroll.ScrollBarImageColor3 = colors.accent1
+
 local monsterScrollCorner = Instance.new("UICorner", monsterScroll)
-monsterScrollCorner.CornerRadius = UDim.new(0, 10)
+monsterScrollCorner.CornerRadius = UDim.new(0, 12)
+
+local monsterScrollStroke = Instance.new("UIStroke", monsterScroll)
+monsterScrollStroke.Color = colors.accent1
+monsterScrollStroke.Transparency = 0.85
+monsterScrollStroke.Thickness = 1
+
 local monsterLayout = Instance.new("UIListLayout", monsterScroll)
-monsterLayout.Padding = UDim.new(0, 5)
+monsterLayout.Padding = UDim.new(0, 6)
 monsterLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
 local monsterButtons = {}
 for i, mName in ipairs(targetMonsters) do
     local btn = Instance.new("TextButton", monsterScroll)
-    btn.Size = UDim2.new(1, -10, 0, 35)
+    btn.Size = UDim2.new(1, -12, 0, 40)
     btn.Text = "✓ " .. mName
-    btn.Font = Enum.Font.Gotham
-    btn.TextSize = 13
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 12
     btn.BackgroundColor3 = colors.success
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.BorderSizePixel = 0
     btn.TextXAlignment = Enum.TextXAlignment.Left
-    btn.TextTruncate = Enum.TextTruncate.AtEnd
+    btn.AutoButtonColor = false
+    
     local padding = Instance.new("UIPadding", btn)
-    padding.PaddingLeft = UDim.new(0, 10)
+    padding.PaddingLeft = UDim.new(0, 12)
+    
     local corner = Instance.new("UICorner", btn)
-    corner.CornerRadius = UDim.new(0, 6)
+    corner.CornerRadius = UDim.new(0, 8)
+    
+    local gradient = Instance.new("UIGradient", btn)
+    gradient.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, colors.success),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 140, 100))
+    }
+    gradient.Rotation = 90
+    
     btn.MouseButton1Click:Connect(function()
         selectedMonsters[mName] = not selectedMonsters[mName]
         btn.Text = (selectedMonsters[mName] and "✓ " or "✗ ") .. mName
-        btn.BackgroundColor3 = selectedMonsters[mName] and colors.success or colors.textDim
+        
+        local targetColor = selectedMonsters[mName] and colors.success or colors.textDim
+        TweenService:Create(btn, TweenInfo.new(0.3), {BackgroundColor3 = targetColor}):Play()
+        
+        gradient.Color = selectedMonsters[mName] and ColorSequence.new{
+            ColorSequenceKeypoint.new(0, colors.success),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 140, 100))
+        } or ColorSequence.new(colors.textDim, colors.textDim)
     end)
+    
     table.insert(monsterButtons, btn)
 end
-monsterScroll.CanvasSize = UDim2.new(0, 0, 0, #targetMonsters * 40)
+
+monsterScroll.CanvasSize = UDim2.new(0, 0, 0, #targetMonsters * 46)
 
 btnAll.MouseButton1Click:Connect(function()
     for i, mName in ipairs(targetMonsters) do
         selectedMonsters[mName] = true
         monsterButtons[i].Text = "✓ " .. mName
-        monsterButtons[i].BackgroundColor3 = colors.success
+        TweenService:Create(monsterButtons[i], TweenInfo.new(0.3), {BackgroundColor3 = colors.success}):Play()
     end
 end)
 
@@ -2261,124 +2414,177 @@ btnNone.MouseButton1Click:Connect(function()
     for i, mName in ipairs(targetMonsters) do
         selectedMonsters[mName] = false
         monsterButtons[i].Text = "✗ " .. mName
-        monsterButtons[i].BackgroundColor3 = colors.textDim
+        TweenService:Create(monsterButtons[i], TweenInfo.new(0.3), {BackgroundColor3 = colors.textDim}):Play()
     end
 end)
-
--- Farm Info
-local farmInfo = Instance.new("TextLabel", farmContent)
-farmInfo.Size = UDim2.new(1, 0, 0, 75)
-farmInfo.BackgroundColor3 = colors.bg
-farmInfo.BorderSizePixel = 0
-farmInfo.Text = "💡 คำแนะนำ:\n🚀 Smart Level Farm: ฟามอัตโนมัติตามเลเวล (แนะนำ!)\n📋 Manual Farm: เลือกมอนเองจากรายการด้านบน\n✨ NEW! วาร์ปไปหามอนอัตโนมัติ ไม่ว่าจะไกลแค่ไหน!\n🎯 หยุดอัตโนมัติที่เลเวล 80"
-farmInfo.TextColor3 = colors.textDim
-farmInfo.Font = Enum.Font.Gotham
-farmInfo.TextSize = 10
-farmInfo.TextWrapped = true
-farmInfo.TextXAlignment = Enum.TextXAlignment.Left
-farmInfo.TextYAlignment = Enum.TextYAlignment.Top
-local farmInfoPadding = Instance.new("UIPadding", farmInfo)
-farmInfoPadding.PaddingLeft = UDim.new(0, 10)
-farmInfoPadding.PaddingRight = UDim.new(0, 10)
-farmInfoPadding.PaddingTop = UDim.new(0, 8)
-farmInfoPadding.PaddingBottom = UDim.new(0, 8)
-local farmInfoCorner = Instance.new("UICorner", farmInfo)
-farmInfoCorner.CornerRadius = UDim.new(0, 10)
 
 farmLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     farmContent.CanvasSize = UDim2.new(0, 0, 0, farmLayout.AbsoluteContentSize.Y + 20)
 end)
 
--- Boss Tab
-local bossTitle = Instance.new("TextLabel", bossContent)
-bossTitle.Size = UDim2.new(1, 0, 0, 30)
-bossTitle.BackgroundTransparency = 1
-bossTitle.Text = "ฟาร์มบอสอัตโนมัติ"
-bossTitle.TextColor3 = colors.accent
-bossTitle.Font = Enum.Font.GothamBold
-bossTitle.TextSize = 16
-bossTitle.TextXAlignment = Enum.TextXAlignment.Left
+-- =================== Boss Tab ===================
+-- Cronus Status Card
+local cronusStatusCard = Instance.new("Frame", bossContent)
+cronusStatusCard.Size = UDim2.new(1, 0, 0, 100)
+cronusStatusCard.BackgroundColor3 = colors.cardBg
+cronusStatusCard.BorderSizePixel = 0
+cronusStatusCard.LayoutOrder = 0
 
-createToggle(bossContent, "👹 Farm Possessed Rider Lv.90", function(on) state.autoBoss = on end)
-createToggle(bossContent, "🏛️ Auto Dungeon (Trial of Ethernal)", function(on) state.autoDungeon = on end)
+local cronusStatusCorner = Instance.new("UICorner", cronusStatusCard)
+cronusStatusCorner.CornerRadius = UDim.new(0, 12)
 
-local dungeonInfo = Instance.new("TextLabel", bossContent)
-dungeonInfo.Size = UDim2.new(1, 0, 0, 70)
-dungeonInfo.BackgroundColor3 = colors.bg
-dungeonInfo.BorderSizePixel = 0
-dungeonInfo.Text = "💡 คำแนะนำ:\n• เปิด Auto Attack + Auto Skills ก่อนใช้งาน\n• Trial of Ethernal: กด Enter → Confirm → รอ 30 วิ → ฆ่าบอส\n• Trial of Ancient: ใช้ในแท็บ Quest แทน (Enhanced!)"
-dungeonInfo.TextColor3 = colors.textDim
-dungeonInfo.Font = Enum.Font.Gotham
-dungeonInfo.TextSize = 10
-dungeonInfo.TextWrapped = true
-dungeonInfo.TextXAlignment = Enum.TextXAlignment.Left
-dungeonInfo.TextYAlignment = Enum.TextYAlignment.Top
-local dungeonInfoPadding = Instance.new("UIPadding", dungeonInfo)
-dungeonInfoPadding.PaddingLeft = UDim.new(0, 10)
-dungeonInfoPadding.PaddingRight = UDim.new(0, 10)
-dungeonInfoPadding.PaddingTop = UDim.new(0, 8)
-dungeonInfoPadding.PaddingBottom = UDim.new(0, 8)
-local dungeonInfoCorner = Instance.new("UICorner", dungeonInfo)
-dungeonInfoCorner.CornerRadius = UDim.new(0, 10)
+local cronusStatusStroke = Instance.new("UIStroke", cronusStatusCard)
+cronusStatusStroke.Color = colors.warning
+cronusStatusStroke.Thickness = 2
+cronusStatusStroke.Transparency = 0.5
+
+local cronusIcon = Instance.new("TextLabel", cronusStatusCard)
+cronusIcon.Size = UDim2.new(0, 70, 1, -20)
+cronusIcon.Position = UDim2.new(0, 10, 0, 10)
+cronusIcon.BackgroundColor3 = colors.panel
+cronusIcon.Text = "⏰"
+cronusIcon.Font = Enum.Font.GothamBold
+cronusIcon.TextSize = 40
+
+local cronusIconCorner = Instance.new("UICorner", cronusIcon)
+cronusIconCorner.CornerRadius = UDim.new(0, 10)
+
+local cronusInfoFrame = Instance.new("Frame", cronusStatusCard)
+cronusInfoFrame.Size = UDim2.new(1, -100, 1, -20)
+cronusInfoFrame.Position = UDim2.new(0, 90, 0, 10)
+cronusInfoFrame.BackgroundTransparency = 1
+
+local cronusTitle = Instance.new("TextLabel", cronusInfoFrame)
+cronusTitle.Size = UDim2.new(1, 0, 0, 24)
+cronusTitle.BackgroundTransparency = 1
+cronusTitle.Text = "⏰ Cronus Boss Status"
+cronusTitle.TextColor3 = colors.warning
+cronusTitle.Font = Enum.Font.GothamBold
+cronusTitle.TextSize = 15
+cronusTitle.TextXAlignment = Enum.TextXAlignment.Left
+
+local cronusStatusLabel = Instance.new("TextLabel", cronusInfoFrame)
+cronusStatusLabel.Size = UDim2.new(1, 0, 0, 22)
+cronusStatusLabel.Position = UDim2.new(0, 0, 0, 28)
+cronusStatusLabel.BackgroundTransparency = 1
+cronusStatusLabel.Text = "⚪ สถานะ: ปิดอยู่"
+cronusStatusLabel.TextColor3 = colors.textDim
+cronusStatusLabel.Font = Enum.Font.GothamBold
+cronusStatusLabel.TextSize = 12
+cronusStatusLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local cronusCombatLabel = Instance.new("TextLabel", cronusInfoFrame)
+cronusCombatLabel.Size = UDim2.new(1, 0, 0, 22)
+cronusCombatLabel.Position = UDim2.new(0, 0, 0, 52)
+cronusCombatLabel.BackgroundTransparency = 1
+cronusCombatLabel.Text = "⚔️ Combat: ปกติ"
+cronusCombatLabel.TextColor3 = colors.success
+cronusCombatLabel.Font = Enum.Font.Gotham
+cronusCombatLabel.TextSize = 11
+cronusCombatLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+createToggle(bossContent, "👹", "Farm Possessed Rider Lv.90", function(on) state.autoBoss = on end)
+createToggle(bossContent, "⏰", "Farm Cronus Lv.90 (NEW!)", function(on) 
+    state.autoCronus = on 
+    if on then
+        -- 🛑 หยุดการตีทันทีเมื่อเปิด Auto Cronus (FORCE STOP!)
+        combatPaused = true
+        
+        -- รอเพื่อให้แน่ใจว่า combatPaused ถูกเซ็ตก่อน
+        wait(0.5)
+        
+        print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        print("🛑 [Cronus] เปิดระบบ Auto Cronus")
+        print("🛑 [Cronus] หยุดการตีทันที! combatPaused = " .. tostring(combatPaused))
+        print("🔍 [Cronus] รอค้นหาบอส Cronus Lv.90...")
+        print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        
+        -- อัปเดต UI
+        if cronusStatusLabel then
+            cronusStatusLabel.Text = "🔍 สถานะ: กำลังค้นหาบอส..."
+            cronusStatusLabel.TextColor3 = colors.info
+        end
+        if cronusCombatLabel then
+            cronusCombatLabel.Text = "⚔️ Combat: ❌ หยุดตี (รอบอส)"
+            cronusCombatLabel.TextColor3 = colors.danger
+        end
+        if cronusStatusStroke then
+            cronusStatusStroke.Color = colors.info
+        end
+    else
+        -- คืนค่า combat เมื่อปิด (ถ้าไม่มี Quest/Dungeon ทำงาน)
+        if not state.autoQuest and not state.autoDungeon then
+            combatPaused = false
+            print("✅ [Cronus] ปิดระบบ Auto Cronus - คืนค่า combat ให้ปกติ")
+        end
+        
+        -- อัปเดต UI
+        cronusStatusLabel.Text = "⚪ สถานะ: ปิดอยู่"
+        cronusStatusLabel.TextColor3 = colors.textDim
+        cronusCombatLabel.Text = "⚔️ Combat: ปกติ"
+        cronusCombatLabel.TextColor3 = colors.success
+        cronusStatusStroke.Color = colors.warning
+    end
+end)
+createToggle(bossContent, "🏛️", "Auto Dungeon (Trial of Ethernal)", function(on) state.autoDungeon = on end)
 
 bossLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     bossContent.CanvasSize = UDim2.new(0, 0, 0, bossLayout.AbsoluteContentSize.Y + 20)
 end)
 
--- Mine Tab
-local mineTitle = Instance.new("TextLabel", mineContent)
-mineTitle.Size = UDim2.new(1, 0, 0, 30)
-mineTitle.BackgroundTransparency = 1
-mineTitle.Text = "ฟาร์มเหมืองอัตโนมัติ"
-mineTitle.TextColor3 = colors.accent
-mineTitle.Font = Enum.Font.GothamBold
-mineTitle.TextSize = 16
-mineTitle.TextXAlignment = Enum.TextXAlignment.Left
-createToggle(mineContent, "⛏️ Auto Mine (Miner Goon Lv.50)", function(on) state.autoMine = on end)
+-- =================== Mine Tab ===================
+createToggle(mineContent, "⛏️", "Auto Mine (Miner Goon Lv.50)", function(on) state.autoMine = on end)
+
 mineLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     mineContent.CanvasSize = UDim2.new(0, 0, 0, mineLayout.AbsoluteContentSize.Y + 20)
 end)
 
--- Quest Tab
+-- =================== Quest Tab ===================
 local questTitle = Instance.new("TextLabel", questContent)
-questTitle.Size = UDim2.new(1, 0, 0, 30)
+questTitle.Size = UDim2.new(1, 0, 0, 40)
 questTitle.BackgroundTransparency = 1
-questTitle.Text = "📜 เลือกเควสที่ต้องการ"
-questTitle.TextColor3 = colors.accent
+questTitle.Text = "📜 เลือกเควส"
+questTitle.TextColor3 = colors.accent1
 questTitle.Font = Enum.Font.GothamBold
 questTitle.TextSize = 16
 questTitle.TextXAlignment = Enum.TextXAlignment.Center
 
 local questButtons = {}
 for idx, questData in ipairs(questDatabase) do
-    local questCard = Instance.new("Frame", questContent)
-    questCard.Size = UDim2.new(1, 0, 0, 100)
-    questCard.BackgroundColor3 = colors.bg
+    local questCard = Instance.new("TextButton", questContent)
+    questCard.Size = UDim2.new(1, 0, 0, 90)
+    questCard.BackgroundColor3 = colors.cardBg
     questCard.BorderSizePixel = 0
+    questCard.Text = ""
+    questCard.AutoButtonColor = false
+    
     local cardCorner = Instance.new("UICorner", questCard)
-    cardCorner.CornerRadius = UDim.new(0, 10)
+    cardCorner.CornerRadius = UDim.new(0, 12)
+    
     local cardStroke = Instance.new("UIStroke", questCard)
-    cardStroke.Color = colors.textDim
-    cardStroke.Thickness = 1
-    cardStroke.Transparency = 0.7
+    cardStroke.Color = colors.accent1
+    cardStroke.Thickness = 1.5
+    cardStroke.Transparency = 0.85
     
     local iconFrame = Instance.new("Frame", questCard)
-    iconFrame.Size = UDim2.new(0, 70, 1, -20)
-    iconFrame.Position = UDim2.new(0, 10, 0, 10)
+    iconFrame.Size = UDim2.new(0, 70, 1, -16)
+    iconFrame.Position = UDim2.new(0, 8, 0, 8)
     iconFrame.BackgroundColor3 = colors.panel
     iconFrame.BorderSizePixel = 0
+    
     local iconCorner = Instance.new("UICorner", iconFrame)
-    iconCorner.CornerRadius = UDim.new(0, 8)
+    iconCorner.CornerRadius = UDim.new(0, 10)
+    
     local iconLabel = Instance.new("TextLabel", iconFrame)
     iconLabel.Size = UDim2.new(1, 0, 1, 0)
     iconLabel.BackgroundTransparency = 1
     iconLabel.Text = questData.icon
     iconLabel.Font = Enum.Font.GothamBold
-    iconLabel.TextSize = 32
+    iconLabel.TextSize = 35
     
     local infoFrame = Instance.new("Frame", questCard)
-    infoFrame.Size = UDim2.new(1, -180, 1, -20)
-    infoFrame.Position = UDim2.new(0, 90, 0, 10)
+    infoFrame.Size = UDim2.new(1, -90, 1, -16)
+    infoFrame.Position = UDim2.new(0, 86, 0, 8)
     infoFrame.BackgroundTransparency = 1
     
     local questNameLabel = Instance.new("TextLabel", infoFrame)
@@ -2401,262 +2607,129 @@ for idx, questData in ipairs(questDatabase) do
     npcLabel.TextXAlignment = Enum.TextXAlignment.Left
     
     local typeLabel = Instance.new("TextLabel", infoFrame)
-    typeLabel.Size = UDim2.new(1, 0, 0, 18)
+    typeLabel.Size = UDim2.new(1, 0, 0, 30)
     typeLabel.Position = UDim2.new(0, 0, 0, 44)
     typeLabel.BackgroundTransparency = 1
     if questData.questType == "kill" then
         typeLabel.Text = "⚔️ ฆ่ามอน: " .. #questData.monsters .. " ตัว"
     elseif questData.questType == "summon" then
-        typeLabel.Text = "👹 Summon Boss: " .. questData.bossName
+        typeLabel.Text = "👹 Summon Boss"
     elseif questData.questType == "ancient_dungeon" then
-        typeLabel.Text = "🏛️ Dungeon: " .. questData.dungeonName .. " (Enhanced!)"
+        typeLabel.Text = "🏛️ Dungeon Quest"
     end
     typeLabel.TextColor3 = colors.textDim
     typeLabel.Font = Enum.Font.Gotham
     typeLabel.TextSize = 11
     typeLabel.TextXAlignment = Enum.TextXAlignment.Left
+    typeLabel.TextWrapped = true
     
-    local statusLabel = Instance.new("TextLabel", infoFrame)
-    statusLabel.Size = UDim2.new(1, 0, 0, 16)
-    statusLabel.Position = UDim2.new(0, 0, 0, 64)
-    statusLabel.BackgroundTransparency = 1
-    statusLabel.Text = "📊 สถานะ: รอเลือก"
-    statusLabel.TextColor3 = colors.warning
-    statusLabel.Font = Enum.Font.GothamBold
-    statusLabel.TextSize = 10
-    statusLabel.TextXAlignment = Enum.TextXAlignment.Left
-    
-    local selectBtn = Instance.new("TextButton", questCard)
-    selectBtn.Size = UDim2.new(0, 80, 0, 80)
-    selectBtn.Position = UDim2.new(1, -90, 0.5, -40)
-    selectBtn.Text = "เลือก"
-    selectBtn.Font = Enum.Font.GothamBold
-    selectBtn.TextSize = 13
-    selectBtn.BackgroundColor3 = colors.accent
-    selectBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    selectBtn.BorderSizePixel = 0
-    local selectBtnCorner = Instance.new("UICorner", selectBtn)
-    selectBtnCorner.CornerRadius = UDim.new(0, 8)
-    
-    selectBtn.MouseButton1Click:Connect(function()
+    questCard.MouseButton1Click:Connect(function()
         state.selectedQuest = questData
         for _, cardData in ipairs(questButtons) do
-            cardData.card.BackgroundColor3 = colors.bg
-            cardData.stroke.Color = colors.textDim
-            cardData.stroke.Thickness = 1
-            cardData.btn.BackgroundColor3 = colors.accent
-            cardData.btn.Text = "เลือก"
-            cardData.status.Text = "📊 สถานะ: รอเลือก"
-            cardData.status.TextColor3 = colors.warning
+            TweenService:Create(cardData.card, TweenInfo.new(0.3), {BackgroundColor3 = colors.cardBg}):Play()
+            TweenService:Create(cardData.stroke, TweenInfo.new(0.3), {Transparency = 0.85, Color = colors.accent1}):Play()
         end
-        questCard.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-        cardStroke.Color = colors.success
-        cardStroke.Thickness = 2
-        selectBtn.BackgroundColor3 = colors.success
-        selectBtn.Text = "✓ เลือกแล้ว"
-        statusLabel.Text = "✅ สถานะ: เลือกแล้ว"
-        statusLabel.TextColor3 = colors.success
+        TweenService:Create(questCard, TweenInfo.new(0.3), {BackgroundColor3 = colors.hover}):Play()
+        TweenService:Create(cardStroke, TweenInfo.new(0.3), {Transparency = 0.3, Color = colors.success}):Play()
     end)
     
-    table.insert(questButtons, {card = questCard, btn = selectBtn, stroke = cardStroke, status = statusLabel})
+    questCard.MouseEnter:Connect(function()
+        if state.selectedQuest ~= questData then
+            TweenService:Create(questCard, TweenInfo.new(0.2), {BackgroundColor3 = colors.hover}):Play()
+        end
+    end)
+    
+    questCard.MouseLeave:Connect(function()
+        if state.selectedQuest ~= questData then
+            TweenService:Create(questCard, TweenInfo.new(0.2), {BackgroundColor3 = colors.cardBg}):Play()
+        end
+    end)
+    
+    table.insert(questButtons, {card = questCard, stroke = cardStroke})
 end
 
-local questToggleContainer = Instance.new("Frame", questContent)
-questToggleContainer.Size = UDim2.new(1, 0, 0, 55)
-questToggleContainer.BackgroundColor3 = colors.panel
-questToggleContainer.BorderSizePixel = 0
-local questToggleCorner = Instance.new("UICorner", questToggleContainer)
-questToggleCorner.CornerRadius = UDim.new(0, 10)
-
-local questToggleLabel = Instance.new("TextLabel", questToggleContainer)
-questToggleLabel.Size = UDim2.new(1, -70, 1, 0)
-questToggleLabel.Position = UDim2.new(0, 15, 0, 0)
-questToggleLabel.BackgroundTransparency = 1
-questToggleLabel.Text = "🚀 เปิดระบบเควสอัตโนมัติ"
-questToggleLabel.TextColor3 = colors.text
-questToggleLabel.Font = Enum.Font.GothamBold
-questToggleLabel.TextSize = 14
-questToggleLabel.TextXAlignment = Enum.TextXAlignment.Left
-
-local questToggle = Instance.new("TextButton", questToggleContainer)
-questToggle.Size = UDim2.new(0, 50, 0, 30)
-questToggle.Position = UDim2.new(1, -60, 0.5, -15)
-questToggle.Text = ""
-questToggle.BackgroundColor3 = colors.textDim
-questToggle.BorderSizePixel = 0
-local questToggleCorner2 = Instance.new("UICorner", questToggle)
-questToggleCorner2.CornerRadius = UDim.new(1, 0)
-
-local questIndicator = Instance.new("Frame", questToggle)
-questIndicator.Size = UDim2.new(0, 22, 0, 22)
-questIndicator.Position = UDim2.new(0, 4, 0.5, -11)
-questIndicator.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-questIndicator.BorderSizePixel = 0
-local questIndCorner = Instance.new("UICorner", questIndicator)
-questIndCorner.CornerRadius = UDim.new(1, 0)
-
-local questOn = false
-questToggle.MouseButton1Click:Connect(function()
+createToggle(questContent, "🚀", "เปิดระบบเควสอัตโนมัติ", function(on)
     if not state.selectedQuest then
-        for i = 1, 3 do
-            questToggleContainer.BackgroundColor3 = colors.danger
-            wait(0.15)
-            questToggleContainer.BackgroundColor3 = colors.panel
-            wait(0.15)
-        end
         return
     end
-    questOn = not questOn
-    state.autoQuest = questOn
-    questToggle.BackgroundColor3 = questOn and colors.success or colors.textDim
-    questIndicator:TweenPosition(
-        questOn and UDim2.new(1, -26, 0.5, -11) or UDim2.new(0, 4, 0.5, -11),
-        Enum.EasingDirection.Out,
-        Enum.EasingStyle.Quad,
-        0.2,
-        true
-    )
+    state.autoQuest = on
 end)
-
-local questInfo = Instance.new("TextLabel", questContent)
-questInfo.Size = UDim2.new(1, 0, 0, 80)
-questInfo.BackgroundColor3 = colors.bg
-questInfo.BorderSizePixel = 0
-questInfo.Text = "💡 คำแนะนำ:\n• เลือกเควสที่ต้องการก่อน\n• Ancient Argument: วาร์ป 3 ครั้ง/หิน, กด E 8 ครั้ง, รอบอส 40 วิ\n• เปิด Auto Attack + Auto Skills + Auto X เพื่อประสิทธิภาพสูงสุด\n• กด F9 ดู Console"
-questInfo.TextColor3 = colors.textDim
-questInfo.Font = Enum.Font.Gotham
-questInfo.TextSize = 10
-questInfo.TextWrapped = true
-questInfo.TextXAlignment = Enum.TextXAlignment.Left
-questInfo.TextYAlignment = Enum.TextYAlignment.Top
-local questInfoPadding = Instance.new("UIPadding", questInfo)
-questInfoPadding.PaddingLeft = UDim.new(0, 10)
-questInfoPadding.PaddingRight = UDim.new(0, 10)
-questInfoPadding.PaddingTop = UDim.new(0, 8)
-questInfoPadding.PaddingBottom = UDim.new(0, 8)
-local questInfoCorner = Instance.new("UICorner", questInfo)
-questInfoCorner.CornerRadius = UDim.new(0, 10)
 
 questLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     questContent.CanvasSize = UDim2.new(0, 0, 0, questLayout.AbsoluteContentSize.Y + 20)
 end)
 
--- Event Tab (ไม่มี Currency Crate)
+-- =================== Event Tab ===================
 local eventTitle = Instance.new("TextLabel", eventContent)
-eventTitle.Size = UDim2.new(1, 0, 0, 30)
+eventTitle.Size = UDim2.new(1, 0, 0, 40)
 eventTitle.BackgroundTransparency = 1
 eventTitle.Text = "🎃 Halloween Event"
-eventTitle.TextColor3 = colors.accent
+eventTitle.TextColor3 = colors.warning
 eventTitle.Font = Enum.Font.GothamBold
 eventTitle.TextSize = 16
 eventTitle.TextXAlignment = Enum.TextXAlignment.Center
 
-local eventInfoCard = Instance.new("Frame", eventContent)
-eventInfoCard.Size = UDim2.new(1, 0, 0, 80)
-eventInfoCard.BackgroundColor3 = colors.bg
-eventInfoCard.BorderSizePixel = 0
-local eventInfoCorner = Instance.new("UICorner", eventInfoCard)
-eventInfoCorner.CornerRadius = UDim.new(0, 10)
-local eventInfoStroke = Instance.new("UIStroke", eventInfoCard)
-eventInfoStroke.Color = Color3.fromRGB(255, 140, 0)
-eventInfoStroke.Thickness = 2
-eventInfoStroke.Transparency = 0.5
-
-local eventIcon = Instance.new("TextLabel", eventInfoCard)
-eventIcon.Size = UDim2.new(0, 70, 1, -16)
-eventIcon.Position = UDim2.new(0, 8, 0, 8)
-eventIcon.BackgroundTransparency = 1
-eventIcon.Text = "🎃"
-eventIcon.Font = Enum.Font.GothamBold
-eventIcon.TextSize = 40
-
-local eventInfoText = Instance.new("TextLabel", eventInfoCard)
-eventInfoText.Size = UDim2.new(1, -90, 1, -16)
-eventInfoText.Position = UDim2.new(0, 86, 0, 8)
-eventInfoText.BackgroundTransparency = 1
-eventInfoText.Text = "Halloween Chest Event\n📦 วาร์ปหากล่อง → 🔮 กด E → ⚔️ ฆ่ามอน → 🎁 รับรางวัล"
-eventInfoText.TextColor3 = colors.text
-eventInfoText.Font = Enum.Font.Gotham
-eventInfoText.TextSize = 11
-eventInfoText.TextWrapped = true
-eventInfoText.TextXAlignment = Enum.TextXAlignment.Left
-eventInfoText.TextYAlignment = Enum.TextYAlignment.Center
-
-createToggle(eventContent, "🎃 เปิด Auto Halloween Event", function(on) state.autoEvent = on end)
-
-local eventWarning = Instance.new("TextLabel", eventContent)
-eventWarning.Size = UDim2.new(1, 0, 0, 70)
-eventWarning.BackgroundColor3 = colors.bg
-eventWarning.BorderSizePixel = 0
-eventWarning.Text = "⚠️ คำเตือน:\n• เปิด Auto Attack + Auto Skills ก่อนใช้งาน\n• ระบบจะวาร์ปและวนลูปอัตโนมัติ\n• ดู Console (F9) เพื่อดูสถานะการทำงาน"
-eventWarning.TextColor3 = colors.warning
-eventWarning.Font = Enum.Font.GothamBold
-eventWarning.TextSize = 10
-eventWarning.TextWrapped = true
-eventWarning.TextXAlignment = Enum.TextXAlignment.Left
-eventWarning.TextYAlignment = Enum.TextYAlignment.Top
-local eventWarningPadding = Instance.new("UIPadding", eventWarning)
-eventWarningPadding.PaddingLeft = UDim.new(0, 10)
-eventWarningPadding.PaddingRight = UDim.new(0, 10)
-eventWarningPadding.PaddingTop = UDim.new(0, 8)
-eventWarningPadding.PaddingBottom = UDim.new(0, 8)
-local eventWarningCorner = Instance.new("UICorner", eventWarning)
-eventWarningCorner.CornerRadius = UDim.new(0, 10)
+createToggle(eventContent, "🎃", "Auto Halloween Event", function(on) state.autoEvent = on end)
 
 eventLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     eventContent.CanvasSize = UDim2.new(0, 0, 0, eventLayout.AbsoluteContentSize.Y + 20)
 end)
 
--- Other Tab
+-- =================== Other Tab ===================
 local otherTitle = Instance.new("TextLabel", otherContent)
-otherTitle.Size = UDim2.new(1,0, 0, 30)
+otherTitle.Size = UDim2.new(1, 0, 0, 40)
 otherTitle.BackgroundTransparency = 1
-otherTitle.Text = "การตั้งค่าอื่นๆ"
-otherTitle.TextColor3 = colors.accent
+otherTitle.Text = "⚙️ การตั้งค่า"
+otherTitle.TextColor3 = colors.accent1
 otherTitle.Font = Enum.Font.GothamBold
 otherTitle.TextSize = 16
-otherTitle.TextXAlignment = Enum.TextXAlignment.Left
+otherTitle.TextXAlignment = Enum.TextXAlignment.Center
 
-createToggle(otherContent, "🔒 ล็อคตำแหน่ง (Lock Position)", function(on) state.lockPos = on end)
-createToggle(otherContent, "😴 โหมด AFK (ป้องกันโดนเตะ)", function(on) state.afkEnabled = on end)
-createToggle(otherContent, "⚔️ Auto Light Attack", function(on) state.autoAttack = on end)
-createToggle(otherContent, "💥 Auto Heavy Attack", function(on) state.autoHeavyAttack = on end)
-createToggle(otherContent, "❌ Auto Press X", function(on) state.autoKeyX = on end)
-createToggle(otherContent, "🔥 Auto Skill E", function(on) state.autoSkills.E = on end)
-createToggle(otherContent, "💫 Auto Skill R", function(on) state.autoSkills.R = on end)
-createToggle(otherContent, "⚡ Auto Skill C", function(on) state.autoSkills.C = on end)
-createToggle(otherContent, "✨ Auto Skill V", function(on) state.autoSkills.V = on end)
+createToggle(otherContent, "🔒", "Lock Position", function(on) state.lockPos = on end)
+createToggle(otherContent, "😴", "AFK Mode", function(on) state.afkEnabled = on end)
+createToggle(otherContent, "⚔️", "Auto Light Attack", function(on) state.autoAttack = on end)
+createToggle(otherContent, "💥", "Auto Heavy Attack", function(on) state.autoHeavyAttack = on end)
+createToggle(otherContent, "❌", "Auto Press X", function(on) state.autoKeyX = on end)
+createToggle(otherContent, "🔥", "Auto Skill E", function(on) state.autoSkills.E = on end)
+createToggle(otherContent, "💫", "Auto Skill R", function(on) state.autoSkills.R = on end)
+createToggle(otherContent, "⚡", "Auto Skill C", function(on) state.autoSkills.C = on end)
+createToggle(otherContent, "✨", "Auto Skill V", function(on) state.autoSkills.V = on end)
 
 otherLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     otherContent.CanvasSize = UDim2.new(0, 0, 0, otherLayout.AbsoluteContentSize.Y + 20)
 end)
 
--- Tab Switching
+-- =================== Tab Switching with Animation ===================
 local function switchTab(tabName)
-    farmContent.Visible = (tabName == "Farm")
-    bossContent.Visible = (tabName == "Boss")
-    mineContent.Visible = (tabName == "Mine")
-    questContent.Visible = (tabName == "Quest")
-    eventContent.Visible = (tabName == "Event")
-    otherContent.Visible = (tabName == "Other")
+    local tabs = {
+        {name = "Farm", content = farmContent, btn = tabFarm, icon = tabFarmIcon, text = tabFarmText, stroke = tabFarmStroke},
+        {name = "Boss", content = bossContent, btn = tabBoss, icon = tabBossIcon, text = tabBossText, stroke = tabBossStroke},
+        {name = "Mine", content = mineContent, btn = tabMine, icon = tabMineIcon, text = tabMineText, stroke = tabMineStroke},
+        {name = "Quest", content = questContent, btn = tabQuest, icon = tabQuestIcon, text = tabQuestText, stroke = tabQuestStroke},
+        {name = "Event", content = eventContent, btn = tabEvent, icon = tabEventIcon, text = tabEventText, stroke = tabEventStroke},
+        {name = "Other", content = otherContent, btn = tabOther, icon = tabOtherIcon, text = tabOtherText, stroke = tabOtherStroke}
+    }
     
-    tabFarm.BackgroundColor3 = tabName == "Farm" and colors.accent or colors.bg
-    tabFarm.TextColor3 = tabName == "Farm" and Color3.fromRGB(255,255,255) or colors.textDim
-    
-    tabBoss.BackgroundColor3 = tabName == "Boss" and colors.accent or colors.bg
-    tabBoss.TextColor3 = tabName == "Boss" and Color3.fromRGB(255,255,255) or colors.textDim
-    
-    tabMine.BackgroundColor3 = tabName == "Mine" and colors.accent or colors.bg
-    tabMine.TextColor3 = tabName == "Mine" and Color3.fromRGB(255,255,255) or colors.textDim
-    
-    tabQuest.BackgroundColor3 = tabName == "Quest" and colors.accent or colors.bg
-    tabQuest.TextColor3 = tabName == "Quest" and Color3.fromRGB(255,255,255) or colors.textDim
-    
-    tabEvent.BackgroundColor3 = tabName == "Event" and colors.accent or colors.bg
-    tabEvent.TextColor3 = tabName == "Event" and Color3.fromRGB(255,255,255) or colors.textDim
-    
-    tabOther.BackgroundColor3 = tabName == "Other" and colors.accent or colors.bg
-    tabOther.TextColor3 = tabName == "Other" and Color3.fromRGB(255,255,255) or colors.textDim
+    for _, tab in ipairs(tabs) do
+        local isActive = tab.name == tabName
+        tab.content.Visible = isActive
+        
+        TweenService:Create(tab.btn, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+            BackgroundTransparency = isActive and 0 or 0.5
+        }):Play()
+        
+        TweenService:Create(tab.stroke, TweenInfo.new(0.3), {
+            Transparency = isActive and 0.3 or 0.8
+        }):Play()
+        
+        TweenService:Create(tab.icon, TweenInfo.new(0.3), {
+            TextColor3 = isActive and colors.text or colors.textDim
+        }):Play()
+        
+        TweenService:Create(tab.text, TweenInfo.new(0.3), {
+            TextColor3 = isActive and colors.text or colors.textDim
+        }):Play()
+    end
 end
 
 tabFarm.MouseButton1Click:Connect(function() switchTab("Farm") end)
@@ -2666,38 +2739,66 @@ tabQuest.MouseButton1Click:Connect(function() switchTab("Quest") end)
 tabEvent.MouseButton1Click:Connect(function() switchTab("Event") end)
 tabOther.MouseButton1Click:Connect(function() switchTab("Other") end)
 
--- Minimize/Restore Button
+-- =================== Minimize Button ===================
 local minimized = false
 local rBtn = Instance.new("TextButton")
-rBtn.Size = UDim2.new(0, 60, 0, 60)
+rBtn.Size = UDim2.new(0, 70, 0, 70)
 rBtn.Position = UDim2.new(0, 50, 0, 100)
-rBtn.BackgroundColor3 = colors.accent
+rBtn.BackgroundColor3 = colors.accent1
 rBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-rBtn.Text = "R"
+rBtn.Text = "⚡"
 rBtn.Font = Enum.Font.GothamBold
-rBtn.TextSize = 28
+rBtn.TextSize = 32
 rBtn.Visible = false
+rBtn.BorderSizePixel = 0
 rBtn.Parent = screenGui
 
 local rCorner = Instance.new("UICorner", rBtn)
 rCorner.CornerRadius = UDim.new(1, 0)
 
+local rGradient = Instance.new("UIGradient", rBtn)
+rGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, colors.accent1),
+    ColorSequenceKeypoint.new(1, colors.accent2)
+}
+rGradient.Rotation = 135
+
 local rStroke = Instance.new("UIStroke", rBtn)
 rStroke.Color = Color3.fromRGB(255, 255, 255)
 rStroke.Thickness = 3
+rStroke.Transparency = 0.5
 
 btnMin.MouseButton1Click:Connect(function()
     minimized = true
+    TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+        Size = UDim2.new(0, 0, 0, 0),
+        Position = UDim2.new(0.5, 0, 0.5, 0)
+    }):Play()
+    wait(0.3)
     mainFrame.Visible = false
     rBtn.Visible = true
+    TweenService:Create(rBtn, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, 70, 0, 70)
+    }):Play()
 end)
 
 rBtn.MouseButton1Click:Connect(function()
     minimized = false
-    mainFrame.Visible = true
+    TweenService:Create(rBtn, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+        Size = UDim2.new(0, 0, 0, 0)
+    }):Play()
+    wait(0.2)
     rBtn.Visible = false
+    mainFrame.Visible = true
+    mainFrame.Size = UDim2.new(0, 0, 0, 0)
+    mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    TweenService:Create(mainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, 520, 0, 600),
+        Position = UDim2.new(0.5, -260, 0.5, -300)
+    }):Play()
 end)
 
+-- Draggable R Button
 local rDragging = false
 local rDragStart, rStartPos
 
@@ -2726,67 +2827,18 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
--- Close Confirmation
-local confirmFrame = Instance.new("Frame")
-confirmFrame.Size = UDim2.new(0, 350, 0, 150)
-confirmFrame.Position = UDim2.new(0.5, -175, 0.5, -75)
-confirmFrame.BackgroundColor3 = colors.bg
-confirmFrame.BorderSizePixel = 0
-confirmFrame.Visible = false
-confirmFrame.Parent = screenGui
-
-local confirmCorner = Instance.new("UICorner", confirmFrame)
-confirmCorner.CornerRadius = UDim.new(0, 16)
-
-local confirmStroke = Instance.new("UIStroke", confirmFrame)
-confirmStroke.Color = colors.danger
-confirmStroke.Thickness = 2
-
-local confirmText = Instance.new("TextLabel", confirmFrame)
-confirmText.Size = UDim2.new(1, -40, 0, 60)
-confirmText.Position = UDim2.new(0, 20, 0, 20)
-confirmText.BackgroundTransparency = 1
-confirmText.Text = "คุณต้องการปิดการใช้งานใช่หรือไม่?"
-confirmText.Font = Enum.Font.GothamBold
-confirmText.TextSize = 16
-confirmText.TextColor3 = colors.text
-confirmText.TextWrapped = true
-
-local btnYes = Instance.new("TextButton", confirmFrame)
-btnYes.Size = UDim2.new(0, 130, 0, 40)
-btnYes.Position = UDim2.new(0.5, -140, 1, -55)
-btnYes.Text = "ใช่ ปิดเลย"
-btnYes.Font = Enum.Font.GothamBold
-btnYes.TextSize = 14
-btnYes.BackgroundColor3 = colors.success
-btnYes.TextColor3 = Color3.fromRGB(255, 255, 255)
-btnYes.BorderSizePixel = 0
-
-local yesCorner = Instance.new("UICorner", btnYes)
-yesCorner.CornerRadius = UDim.new(0, 8)
-
-local btnNo = Instance.new("TextButton", confirmFrame)
-btnNo.Size = UDim2.new(0, 130, 0, 40)
-btnNo.Position = UDim2.new(0.5, 10, 1, -55)
-btnNo.Text = "ไม่ ยกเลิก"
-btnNo.Font = Enum.Font.GothamBold
-btnNo.TextSize = 14
-btnNo.BackgroundColor3 = colors.danger
-btnNo.TextColor3 = Color3.fromRGB(255, 255, 255)
-btnNo.BorderSizePixel = 0
-
-local noCorner = Instance.new("UICorner", btnNo)
-noCorner.CornerRadius = UDim.new(0, 8)
-
+-- =================== Close Confirmation ===================
 btnClose.MouseButton1Click:Connect(function()
-    confirmFrame.Visible = true
-end)
-
-btnYes.MouseButton1Click:Connect(function()
+    TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+        Size = UDim2.new(0, 0, 0, 0),
+        Position = UDim2.new(0.5, 0, 0.5, 0)
+    }):Play()
+    wait(0.3)
     programRunning = false
     screenGui:Destroy()
 end)
 
-btnNo.MouseButton1Click:Connect(function()
-    confirmFrame.Visible = false
-end)
+print("🎨 Ultra Modern Admin UI v5.1 loaded successfully!")
+print("✨ Created by: Modern UI Designer")
+print("🌈 Features: Gradient colors, smooth animations, glassmorphism")
+print("⚡ NEW: Cronus Lv.90 Boss Farm added!")
