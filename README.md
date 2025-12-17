@@ -72,7 +72,9 @@ local state = {
     autoSkills={E=false, R=false, C=false, V=false},
     autoQuest=false,
     selectedQuest=nil,
-    autoEvent=false
+    autoEvent=false,
+    autoHeal=false,       
+    autoHenshin=false      
 }
 
 -- =================== Quest Database ===================
@@ -139,7 +141,26 @@ local questDatabase = {
         },
         bossNames = {"Daguba Lv.90", "Mighty Rider Lv.90", "Empowered Daguba Lv.90"},
         icon = "🏛️"
-    }
+    },
+{
+        id = "quest_hunt_hunted",
+        name = "The Hunt Hunted",
+        npcName = "Malcom",
+        npcPath = {"NPC", "Malcom"},
+        dialogueSteps = {
+            "I'm ready for the challenge!",
+            "The Hunt Hunted",
+            "Start 'The Hunt Hunted'"
+        },
+        monsters = {
+            "Dark Dragon User Lv.40",
+            "Gazelle User Lv.45"
+        },
+        questUIName = "The Hunt Hunted",
+        questType = "kill",
+        icon = "🎯"
+    },
+    
 }
 
 -- =================== Boss Database ===================
@@ -345,6 +366,88 @@ local function getNPCFromPath(path)
         if not current then return nil end
     end
     return current
+end
+
+-- =================== 🚀 SMART QUEST SYSTEM (วาปแค่ครั้งเดียว แล้วรับเควสเร็ว!) ===================
+local function smartWarpToNPC(questData)
+    local npc = getNPCFromPath(questData.npcPath)
+    if not npc or not npc:FindFirstChild("HumanoidRootPart") then
+        print("❌ [Quest] ไม่พบ NPC: " .. questData.npcName)
+        return false
+    end
+    
+    local hrp = getHRP()
+    if not hrp then return false end
+    
+    print("🚀 [Quest] วาปไป NPC: " .. questData.npcName)
+    
+    -- วาปไปหา NPC แบบเร็ว (แค่ครั้งเดียว!)
+    local npcCFrame = npc.HumanoidRootPart.CFrame * CFrame.new(0, 0, 3)
+    
+    for i = 1, 5 do
+        pcall(function()
+            hrp.CFrame = npcCFrame
+            hrp.Velocity = Vector3.new(0, 0, 0)
+            hrp.RotVelocity = Vector3.new(0, 0, 0)
+        end)
+        wait(0.1)
+    end
+    
+    wait(0.5)
+    return true
+end
+
+local function fastAcceptQuest(questData, npc)
+    print("📥 [Quest] กำลังรับเควส...")
+    
+    -- คลิก NPC แบบเร็ว
+    for i = 1, 3 do
+        clickNPC(npc)
+        wait(0.2)
+    end
+    
+    wait(0.5)
+    
+    -- ส่งคำสั่งรับเควส
+    pcall(function()
+        if questData.dialogueSteps then
+            for i, step in ipairs(questData.dialogueSteps) do
+                local args = {{Choice = step}}
+                ReplicatedStorage:WaitForChild("Remote"):WaitForChild("Event"):WaitForChild("Dialogue"):FireServer(unpack(args))
+                wait(0.3)
+            end
+        end
+        local args2 = {{Exit = true}}
+        ReplicatedStorage:WaitForChild("Remote"):WaitForChild("Event"):WaitForChild("Dialogue"):FireServer(unpack(args2))
+    end)
+    
+    wait(0.5)
+    print("✅ [Quest] ส่งคำสั่งรับเควสแล้ว!")
+end
+
+local function fastSubmitQuest(questData, npc)
+    print("📤 [Quest] กำลังส่งเควส...")
+    
+    -- คลิก NPC แบบเร็ว
+    for i = 1, 3 do
+        clickNPC(npc)
+        wait(0.2)
+    end
+    
+    wait(0.5)
+    
+    -- ส่งคำสั่งส่งเควส
+    pcall(function()
+        local args = {{Choice = "Yes, I've completed it."}}
+        ReplicatedStorage:WaitForChild("Remote"):WaitForChild("Event"):WaitForChild("Dialogue"):FireServer(unpack(args))
+        wait(0.5)
+        
+        local exitArgs = {{Exit = true}}
+        ReplicatedStorage:WaitForChild("Remote"):WaitForChild("Event"):WaitForChild("Dialogue"):FireServer(unpack(exitArgs))
+    end)
+    
+    wait(0.5)
+    print("✅ [Quest] ส่งคำสั่งส่งเควสแล้ว!")
 end
 
 local function talkToNPC(questData)
@@ -784,7 +887,7 @@ spawn(function()
     end
 end)
 
--- =================== Auto Quest Loop ===================
+-- =================== Auto Quest Loop (SMART FAST!) ===================
 spawn(function()
     while programRunning do
         if state.autoQuest and state.selectedQuest then
@@ -792,268 +895,252 @@ spawn(function()
             local hrp = getHRP()
             if hrp then
                 local npc = getNPCFromPath(questData.npcPath)
-                if npc and npc:FindFirstChild("HumanoidRootPart") then
+                if not npc or not npc:FindFirstChild("HumanoidRootPart") then
+                    print("❌ [Quest] ไม่พบ NPC!")
+                    wait(3)
+                    continue
+                end
+                
+                combatPaused = true
+                wait(0.2)
+                
+                print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+                print("🚀 [Quest] เริ่มรับเควส: " .. questData.name)
+                print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+                
+                -- 🚀 วาปไป NPC (แค่ครั้งเดียว!)
+                if not smartWarpToNPC(questData) then
+                    combatPaused = false
+                    wait(3)
+                    continue
+                end
+                
+                -- รับเควสแบบเร็ว
+                fastAcceptQuest(questData, npc)
+                
+                -- เช็คว่ารับเควสสำเร็จหรือไม่
+                local questReceived = false
+                for i = 1, 15 do
+                    if hasActiveQuest(questData) then
+                        questReceived = true
+                        print("✅ [Quest] รับเควสสำเร็จ!")
+                        break
+                    else
+                        wait(0.5)
+                    end
+                end
+                
+                if not questReceived then
+                    print("⚠️ [Quest] รับเควสไม่สำเร็จ ลองใหม่...")
+                    combatPaused = false
+                    wait(3)
+                    continue
+                end
+                
+                wait(0.5)
+                
+                if questData.questType == "ancient_dungeon" then
+                    print("🏛️ [Quest] เข้า Dungeon...")
+                    local dungeonEntered = enterDungeonUI(questData.dungeonName)
                     
-                    combatPaused = true
-                    wait(0.3)
-                    
-                    local npcCFrame = npc.HumanoidRootPart.CFrame * CFrame.new(0, 0, 1.5)
-                    
-                    for tpAttempt = 1, 3 do
-                        pcall(function()
-                            hrp.CFrame = npcCFrame
-                            hrp.Velocity = Vector3.new(0, 0, 0)
-                            hrp.RotVelocity = Vector3.new(0, 0, 0)
-                        end)
-                        wait(0.2)
+                    if not dungeonEntered then
+                        combatPaused = false
+                        wait(5)
+                        continue
                     end
                     
-                    for i = 4, 1, -1 do
-                        wait(1)
-                    end
-                    
-                    wait(0.5)
-                    
-                    for clickAttempt = 1, 5 do
-                        clickNPC(npc)
-                        wait(0.4)
-                    end
-                    
-                    wait(0.8)
-                    
-                    talkToNPC(questData)
                     wait(2)
                     
-                    local questReceived = false
-                    for i = 1, 15 do
-                        if hasActiveQuest(questData) then
-                            questReceived = true
-                            break
-                        else
-                            wait(0.5)
+                    combatPaused = false
+                    wait(0.5)
+                    
+                    local successfulKills = 0
+                    for stoneIdx, stoneData in ipairs(questData.stonePositions) do
+                        if not state.autoQuest or not programRunning then break end
+                        
+                        local killed = summonAndKillStoneBoss(stoneData, questData.bossNames)
+                        if killed then
+                            successfulKills = successfulKills + 1
                         end
+                        
+                        wait(2)
                     end
                     
-                    if not questReceived then
+                    combatPaused = true
+                    
+                    local leftDungeon = false
+                    pcall(function()
+                        for _, gui in ipairs(player.PlayerGui:GetChildren()) do
+                            for _, button in ipairs(gui:GetDescendants()) do
+                                if button:IsA("TextButton") and button.Visible then
+                                    local buttonText = string.lower(button.Text or "")
+                                    if string.find(buttonText, "leave") or string.find(buttonText, "exit") or string.find(buttonText, "quit") then
+                                        for _, connection in pairs(getconnections(button.MouseButton1Click)) do
+                                            connection:Fire()
+                                        end
+                                        button.MouseButton1Click:Fire()
+                                        leftDungeon = true
+                                        wait(2)
+                                        break
+                                    end
+                                end
+                            end
+                            if leftDungeon then break end
+                        end
+                    end)
+                    
+                    if leftDungeon then
+                        wait(10)
+                    else
+                        wait(15)
+                    end
+                    
+                    wait(10)
+                    
+                elseif questData.questType == "summon" then
+                    print("👹 [Quest] Summon Boss...")
+                    local summonSpot = getSummonLocation(questData)
+                    if summonSpot then
+                        pcall(function()
+                            hrp.CFrame = summonSpot.CFrame * CFrame.new(0, 3, 0)
+                        end)
+                        wait(1.5)
+                        pressSummonKey(questData.summonKey)
+                        wait(2)
+                        
+                        local bossFound = false
+                        local attempts = 0
+                        local maxAttempts = 100
+                        while programRunning and state.autoQuest and not bossFound and attempts < maxAttempts do
+                            local boss = getQuestMob(questData.bossName)
+                            if boss then
+                                bossFound = true
+                                
+                                combatPaused = false
+                                wait(0.5)
+                                
+                                local bossHRP = boss:FindFirstChild("HumanoidRootPart")
+                                local bossHumanoid = boss:FindFirstChild("Humanoid")
+                                
+                                while programRunning and state.autoQuest and boss.Parent and bossHumanoid and bossHumanoid.Health > 0 do
+                                    if bossHRP then
+                                        local backDistance = 3
+                                        local backPos = bossHRP.Position - bossHRP.CFrame.LookVector * backDistance
+                                        pcall(function()
+                                            hrp.CFrame = CFrame.new(backPos, Vector3.new(bossHRP.Position.X, backPos.Y, bossHRP.Position.Z))
+                                        end)
+                                        wait(0.15)
+                                    else
+                                        break
+                                    end
+                                end
+                                break
+                            else
+                                attempts = attempts + 1
+                                wait(1)
+                            end
+                        end
+                        
+                        if not bossFound then
+                            combatPaused = false
+                            wait(3)
+                            continue
+                        end
+                    else
                         combatPaused = false
                         wait(3)
                         continue
                     end
                     
-                    wait(0.5)
+                elseif questData.questType == "kill" then
+                    print("⚔️ [Quest] ฆ่ามอน...")
+                    local killedMobs = {}
+                    local firstMobFound = false
                     
-                    if questData.questType == "ancient_dungeon" then
-                        local dungeonEntered = enterDungeonUI(questData.dungeonName)
+                    for _, mobName in ipairs(questData.monsters) do
+                        local mobFound = false
+                        local attempts = 0
+                        local maxAttempts = 150
                         
-                        if not dungeonEntered then
-                            combatPaused = false
-                            wait(5)
-                            continue
-                        end
-                        
-                        wait(2)
-                        
-                        combatPaused = false
-                        wait(0.5)
-                        
-                        local successfulKills = 0
-                        for stoneIdx, stoneData in ipairs(questData.stonePositions) do
-                            if not state.autoQuest or not programRunning then break end
-                            
-                            local killed = summonAndKillStoneBoss(stoneData, questData.bossNames)
-                            if killed then
-                                successfulKills = successfulKills + 1
-                            end
-                            
-                            wait(2)
-                        end
-                        
-                        combatPaused = true
-                        
-                        local leftDungeon = false
-                        pcall(function()
-                            for _, gui in ipairs(player.PlayerGui:GetChildren()) do
-                                for _, button in ipairs(gui:GetDescendants()) do
-                                    if button:IsA("TextButton") and button.Visible then
-                                        local buttonText = string.lower(button.Text or "")
-                                        if string.find(buttonText, "leave") or string.find(buttonText, "exit") or string.find(buttonText, "quit") then
-                                            for _, connection in pairs(getconnections(button.MouseButton1Click)) do
-                                                connection:Fire()
-                                            end
-                                            button.MouseButton1Click:Fire()
-                                            leftDungeon = true
-                                            wait(2)
-                                            break
-                                        end
-                                    end
-                                end
-                                if leftDungeon then break end
-                            end
-                        end)
-                        
-                        if leftDungeon then
-                            wait(10)
-                        else
-                            wait(15)
-                        end
-                        
-                        wait(10)
-                        
-                    elseif questData.questType == "summon" then
-                        local summonSpot = getSummonLocation(questData)
-                        if summonSpot then
-                            pcall(function()
-                                hrp.CFrame = summonSpot.CFrame * CFrame.new(0, 3, 0)
-                            end)
-                            wait(1.5)
-                            pressSummonKey(questData.summonKey)
-                            wait(2)
-                            
-                            local bossFound = false
-                            local attempts = 0
-                            local maxAttempts = 100
-                            while programRunning and state.autoQuest and not bossFound and attempts < maxAttempts do
-                                local boss = getQuestMob(questData.bossName)
-                                if boss then
-                                    bossFound = true
-                                    
-                                    combatPaused = false
-                                    wait(0.5)
-                                    
-                                    local bossHRP = boss:FindFirstChild("HumanoidRootPart")
-                                    local bossHumanoid = boss:FindFirstChild("Humanoid")
-                                    
-                                    while programRunning and state.autoQuest and boss.Parent and bossHumanoid and bossHumanoid.Health > 0 do
-                                        if bossHRP then
-                                            local backDistance = 3
-                                            local backPos = bossHRP.Position - bossHRP.CFrame.LookVector * backDistance
-                                            pcall(function()
-                                                hrp.CFrame = CFrame.new(backPos, Vector3.new(bossHRP.Position.X, backPos.Y, bossHRP.Position.Z))
-                                            end)
-                                            wait(0.15)
-                                        else
-                                            break
-                                        end
-                                    end
+                        while programRunning and state.autoQuest and not killedMobs[mobName] and attempts < maxAttempts do
+                            local mob = getQuestMob(mobName)
+                            if not mob then
+                                if mobFound then
+                                    killedMobs[mobName] = true
                                     break
                                 else
                                     attempts = attempts + 1
                                     wait(1)
                                 end
-                            end
-                            
-                            if not bossFound then
-                                combatPaused = false
-                                wait(3)
-                                continue
-                            end
-                        else
-                            combatPaused = false
-                            wait(3)
-                            continue
-                        end
-                        
-                    elseif questData.questType == "kill" then
-                        local killedMobs = {}
-                        local firstMobFound = false
-                        
-                        for _, mobName in ipairs(questData.monsters) do
-                            local mobFound = false
-                            local attempts = 0
-                            local maxAttempts = 150
-                            
-                            while programRunning and state.autoQuest and not killedMobs[mobName] and attempts < maxAttempts do
-                                local mob = getQuestMob(mobName)
-                                if not mob then
-                                    if mobFound then
-                                        killedMobs[mobName] = true
-                                        break
-                                    else
-                                        attempts = attempts + 1
-                                        wait(1)
-                                    end
-                                else
-                                    if not firstMobFound then
-                                        combatPaused = false
-                                        firstMobFound = true
-                                        wait(0.5)
-                                    end
-                                    
-                                    mobFound = true
-                                    local mobHRP = mob:FindFirstChild("HumanoidRootPart")
-                                    local mobHumanoid = mob:FindFirstChild("Humanoid")
-                                    if mobHRP and mobHumanoid and mobHumanoid.Health > 0 then
-                                        local backDistance = 3
-                                        local backPos = mobHRP.Position - mobHRP.CFrame.LookVector * backDistance
-                                        pcall(function()
-                                            hrp.CFrame = CFrame.new(backPos, Vector3.new(mobHRP.Position.X, backPos.Y, mobHRP.Position.Z))
-                                        end)
-                                        wait(0.15)
-                                    else
-                                        killedMobs[mobName] = true
-                                        break
-                                    end
+                            else
+                                if not firstMobFound then
+                                    combatPaused = false
+                                    firstMobFound = true
+                                    wait(0.5)
                                 end
-                                wait(0.1)
+                                
+                                mobFound = true
+                                local mobHRP = mob:FindFirstChild("HumanoidRootPart")
+                                local mobHumanoid = mob:FindFirstChild("Humanoid")
+                                if mobHRP and mobHumanoid and mobHumanoid.Health > 0 then
+                                    local backDistance = 3
+                                    local backPos = mobHRP.Position - mobHRP.CFrame.LookVector * backDistance
+                                    pcall(function()
+                                        hrp.CFrame = CFrame.new(backPos, Vector3.new(mobHRP.Position.X, backPos.Y, mobHRP.Position.Z))
+                                    end)
+                                    wait(0.15)
+                                else
+                                    killedMobs[mobName] = true
+                                    break
+                                end
                             end
-                            if killedMobs[mobName] then
-                                wait(1)
-                            end
+                            wait(0.1)
+                        end
+                        if killedMobs[mobName] then
+                            wait(1)
                         end
                     end
-                    
-                    wait(1.5)
-                    
-                    combatPaused = true
-                    wait(0.3)
-                    
-                    local submitCFrame = npc.HumanoidRootPart.CFrame * CFrame.new(0, 0, 1.5)
-                    
-                    for tpAttempt = 1, 3 do
-                        pcall(function()
-                            hrp = getHRP()
-                            if hrp then
-                                hrp.CFrame = submitCFrame
-                                hrp.Velocity = Vector3.new(0, 0, 0)
-                                hrp.RotVelocity = Vector3.new(0, 0, 0)
-                            end
-                        end)
-                        wait(0.2)
-                    end
-                    
-                    for i = 4, 1, -1 do
-                        wait(1)
-                    end
-                    
-                    wait(0.5)
-                    
-                    for clickAttempt = 1, 5 do
-                        clickNPC(npc)
-                        wait(0.4)
-                    end
-                    
-                    wait(0.5)
-                    
-                    submitQuest(questData, npc)
-                    wait(2)
-                    
-                    local questSubmitted = false
-                    for i = 1, 15 do
-                        if not hasActiveQuest(questData) then
-                            questSubmitted = true
-                            break
-                        else
-                            wait(0.5)
-                        end
-                    end
-                    
+                end
+                
+                wait(1)
+                
+                combatPaused = true
+                wait(0.2)
+                
+                print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+                print("📤 [Quest] กลับไปส่งเควส")
+                print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+                
+                -- 🚀 วาปกลับไป NPC (แค่ครั้งเดียว!)
+                if not smartWarpToNPC(questData) then
                     combatPaused = false
-                    
-                    if questSubmitted then
-                        wait(3)
+                    wait(3)
+                    continue
+                end
+                
+                -- ส่งเควสแบบเร็ว
+                fastSubmitQuest(questData, npc)
+                
+                -- เช็คว่าส่งเควสสำเร็จหรือไม่
+                local questSubmitted = false
+                for i = 1, 15 do
+                    if not hasActiveQuest(questData) then
+                        questSubmitted = true
+                        print("✅ [Quest] ส่งเควสสำเร็จ!")
+                        break
                     else
-                        wait(2)
+                        wait(0.5)
                     end
+                end
+                
+                combatPaused = false
+                
+                if questSubmitted then
+                    print("🎉 [Quest] รอบนี้เสร็จสมบูรณ์!")
+                    wait(2)
+                else
+                    print("⚠️ [Quest] ส่งเควสอาจไม่สำเร็จ ลองใหม่...")
+                    wait(2)
                 end
             end
         else
@@ -1496,52 +1583,103 @@ spawn(function()
     end
 end)
 
--- =================== Auto Mine Loop ===================
+-- =================== Auto Mine Loop (WARP MODE! วาปตีทีละตัว!) ===================
 spawn(function()
     while programRunning do
         if state.autoMine then
             local hrp = getHRP()
             local livesFolder = workspace:FindFirstChild(livesFolderName)
             if hrp and livesFolder then
+                -- 1️⃣ หามอน Miner ทั้งหมดที่ยังมีชีวิต
                 local miners = {}
                 for _, mob in ipairs(livesFolder:GetChildren()) do
-                    if mob.Name=="Miner Goon Lv.50" and mob:FindFirstChild("HumanoidRootPart") then
-                        table.insert(miners,mob)
-                    end
-                end
-                table.sort(miners,function(a,b)
-                    return (hrp.Position - a.HumanoidRootPart.Position).Magnitude < (hrp.Position - b.HumanoidRootPart.Position).Magnitude
-                end)
-                local targetMiners={}
-                for i=1,math.min(3,#miners) do table.insert(targetMiners,miners[i]) end
-                local distance = 5
-                local spacing = 1.5
-                for i,mob in ipairs(targetMiners) do
-                    local mobHRP = mob:FindFirstChild("HumanoidRootPart")
-                    if mobHRP then
-                        mobHRP.Anchored=false
-                        local offset = Vector3.new((i-1)*spacing,0,0)
-                        mobHRP.CFrame = CFrame.new(hrp.Position + hrp.CFrame.LookVector * distance + offset)
-                    end
-                end
-                for _, mob in ipairs(targetMiners) do
-                    local mobHRP = mob:FindFirstChild("HumanoidRootPart")
-                    local humanoid = mob:FindFirstChild("Humanoid")
-                    if mobHRP and humanoid and humanoid.Health>0 then
-                        local backDistance = 3
-                        local backPos = mobHRP.Position - mobHRP.CFrame.LookVector*backDistance
-                        pcall(function() hrp.CFrame=CFrame.new(backPos,Vector3.new(mobHRP.Position.X,backPos.Y,mobHRP.Position.Z)) end)
-                        wait(0.05)
-                        while programRunning and state.autoMine and mob.Parent and humanoid.Health>0 do
-                            local desired = mobHRP.Position - mobHRP.CFrame.LookVector*backDistance
-                            pcall(function() hrp.CFrame=CFrame.new(desired,Vector3.new(mobHRP.Position.X,desired.Y,mobHRP.Position.Z)) end)
-                            wait(0.1)
+                    if mob.Name == "Miner Goon Lv.50" and mob:FindFirstChild("HumanoidRootPart") and mob:FindFirstChild("Humanoid") then
+                        if mob.Humanoid.Health > 0 then
+                            table.insert(miners, mob)
                         end
                     end
                 end
+                
+                -- 2️⃣ เรียงตามระยะใกล้-ไกล
+                table.sort(miners, function(a, b)
+                    return (hrp.Position - a.HumanoidRootPart.Position).Magnitude < (hrp.Position - b.HumanoidRootPart.Position).Magnitude
+                end)
+                
+                -- 3️⃣ เลือกแค่ 3 ตัวแรก
+                local targetMiners = {}
+                for i = 1, math.min(3, #miners) do 
+                    table.insert(targetMiners, miners[i]) 
+                end
+                
+                -- 4️⃣ วาปไปตีทีละตัว (ไม่ดึงมอนมา!)
+                for mobIndex, mob in ipairs(targetMiners) do
+                    if not (programRunning and state.autoMine) then break end
+                    
+                    local mobHRP = mob:FindFirstChild("HumanoidRootPart")
+                    local humanoid = mob:FindFirstChild("Humanoid")
+                    
+                    -- เช็คว่ามอนยังมีชีวิตอยู่ไหม
+                    if mobHRP and humanoid and humanoid.Health > 0 and mob.Parent then
+                        
+                        print("⛏️ [Mine] กำลังวาปไปตีมอนตัวที่ " .. mobIndex .. "/3")
+                        
+                        -- ✅ ระยะตี (ใกล้มาก!)
+                        local attackDistance = 2.5
+                        
+                        -- 🚀 วาปไปหน้ามอนหลายครั้งเพื่อให้แน่ใจ
+                        for warpCount = 1, 5 do
+                            if not mobHRP.Parent then break end
+                            
+                            local targetPos = mobHRP.Position - mobHRP.CFrame.LookVector * attackDistance
+                            pcall(function()
+                                hrp = getHRP()
+                                if hrp then
+                                    hrp.CFrame = CFrame.new(targetPos, Vector3.new(mobHRP.Position.X, targetPos.Y, mobHRP.Position.Z))
+                                    hrp.Velocity = Vector3.new(0, 0, 0)
+                                    hrp.RotVelocity = Vector3.new(0, 0, 0)
+                                end
+                            end)
+                            wait(0.05)
+                        end
+                        
+                        -- รอให้ตัวละครอยู่นิ่ง
+                        wait(0.2)
+                        
+                        print("⚔️ [Mine] เริ่มตีมอนตัวที่ " .. mobIndex)
+                        
+                        -- ✅ Loop ตีจนกว่ามอนจะตาย
+                        while programRunning and state.autoMine and mob.Parent and humanoid.Health > 0 do
+                            if mobHRP and mobHRP.Parent then
+                                local desired = mobHRP.Position - mobHRP.CFrame.LookVector * attackDistance
+                                pcall(function()
+                                    hrp = getHRP()
+                                    if hrp then
+                                        hrp.CFrame = CFrame.new(desired, Vector3.new(mobHRP.Position.X, desired.Y, mobHRP.Position.Z))
+                                    end
+                                end)
+                            else
+                                break
+                            end
+                            wait(0.1)
+                        end
+                        
+                        print("💀 [Mine] มอนตัวที่ " .. mobIndex .. " ตายแล้ว! วาปไปตัวถัดไป...")
+                        
+                        -- ✅ รอให้มอนตายจริงๆ ก่อนไปตัวถัดไป
+                        wait(0.5)
+                    else
+                        print("⚠️ [Mine] มอนตัวที่ " .. mobIndex .. " ตายไปแล้ว ข้าม!")
+                    end
+                end
+                
+                -- รอหน่อยก่อนเริ่มรอบใหม่
+                wait(1)
+            else
+                wait(1)
             end
+        else
+            wait(0.5)
         end
-        wait(0.1)
     end
 end)
 
@@ -1602,29 +1740,27 @@ spawn(function()
 end)
 
 
--- =================== Auto Skills (100% FIXED!) ===================
-local skills = {
-    {Key="E", Pos=CFrame.new(-1345.676,38.287,-55.023,1,0,0,0,1,0,0,0,1)},
-    {Key="R", Pos=CFrame.new(-1345.676,38.287,-55.023,1,0,0,0,1,0,0,0,1)},
-    {Key="C", Pos=CFrame.new(-1345.676,38.287,-55.023,1,0,0,0,1,0,0,0,1)},
-    {Key="V", Pos=CFrame.new(-1362.577,38.287,-40.816,1,0,0,0,1,0,0,0,1)},
-}
-
-for _, skill in ipairs(skills) do
+-- =================== Auto Skills (UNIVERSAL - รองรับทุกมาสไรเดอร์!) ===================
+for _, skillKey in ipairs({"E", "R", "C", "V"}) do
     spawn(function()
         while programRunning do
             -- ⚠️ ถ้า Auto Cronus เปิดอยู่ → ห้ามทำงานเลย!
             if state.autoCronus then
                 wait(0.1)
-            elseif state.autoSkills[skill.Key] and not combatPaused then
+            elseif state.autoSkills[skillKey] and not combatPaused then
                 local char = getChar()
                 local event = char:FindFirstChild("PlayerHandler") and char.PlayerHandler:FindFirstChild("HandlerEvent")
                 if event then
+                    -- ใช้ Mouse position จริงเพื่อรองรับทุกมาสไรเดอร์
+                    local mouse = player:GetMouse()
+                    local mousePos = mouse.Hit
+                    
                     local args = {
                         {
-                            Key = skill.Key,
                             Skill = true,
-                            MouseData = skill.Pos
+                            AttackType = "Down",
+                            Key = skillKey,
+                            MouseData = mousePos
                         }
                     }
                     pcall(function() event:FireServer(unpack(args)) end)
@@ -1656,7 +1792,8 @@ spawn(function()
                             "Survive Bat",
                             "Survive Cobra", 
                             "Survive Dark Dragon",
-                            "Survive Dragon"
+                            "Survive Dragon",
+                            "Raia Survive"
                         }
                         
                         for _, formName in ipairs(forms) do
@@ -1681,6 +1818,135 @@ spawn(function()
             wait(0.5)
         else
             wait(0.1)
+        end
+    end
+end)
+
+-- ===================  Auto Heal (NEW!) ===================
+spawn(function()
+    while programRunning do
+        if state.autoHeal then
+            local char = getChar()
+            local humanoid = char:FindFirstChildOfClass("Humanoid")
+            
+            if humanoid then
+                local healthPercent = (humanoid.Health / humanoid.MaxHealth) * 100
+                
+                -- ถ้าเลือดต่ำกว่า 70% ให้ฮิล
+                if healthPercent < 70 then
+                    pcall(function()
+                        local handlerEvent = char:FindFirstChild("PlayerHandler") and char.PlayerHandler:FindFirstChild("HandlerEvent")
+                        if handlerEvent then
+                            local args = {
+                                {
+                                    Heal = true
+                                }
+                            }
+                            handlerEvent:FireServer(unpack(args))
+                        end
+                    end)
+                    wait(0.3) -- ความเร็วส่งข้อมูล
+                else
+                    wait(0.5) -- เช็คบ่อยๆ Log
+                end
+            else
+                wait(1)
+            end
+        else
+            wait(0.5)
+        end
+    end
+end)
+
+-- =================== ⚡ Auto Henshin (TRULY FIXED!) ===================
+spawn(function()
+    local isTransformed = false
+    local lastCheck = 0
+    local checkInterval = 5
+    local transformCooldown = 0
+    
+    while programRunning do
+        if state.autoHenshin then
+            local currentTime = tick()
+            
+            if transformCooldown > 0 and currentTime < transformCooldown then
+                wait(1)
+            elseif currentTime - lastCheck >= checkInterval then
+                lastCheck = currentTime
+                
+                local char = getChar()
+                if char and char:FindFirstChild("PlayerHandler") then
+                    local shouldTransform = false
+                    
+                    pcall(function()
+                        local humanoid = char:FindFirstChildOfClass("Humanoid")
+                        if humanoid then
+                            local baseMaxHealth = 1400  -- ✅ แก้ตรงนี้! (เดิม 100)
+                            
+                            if humanoid.MaxHealth > baseMaxHealth then
+                                isTransformed = true
+                                shouldTransform = false
+                                print("✅ [Henshin] แปรงร่างแล้ว (MaxHP: " .. humanoid.MaxHealth .. ")")
+                            else
+                                isTransformed = false
+                                shouldTransform = true
+                                print("⚠️ [Henshin] ยังไม่แปรงร่าง (MaxHP: " .. humanoid.MaxHealth .. ")")
+                            end
+                            
+                            -- Backup check จาก Model
+                            if not isTransformed then
+                                for _, obj in pairs(char:GetChildren()) do
+                                    if obj:IsA("Model") or obj:IsA("Accessory") then
+                                        local name = string.lower(obj.Name)
+                                        if string.match(name, "survive") or 
+                                           string.match(name, "final") or
+                                           string.match(name, "armor") or
+                                           string.match(name, "rider") then
+                                            isTransformed = true
+                                            shouldTransform = false
+                                            print("✅ [Henshin] พบ Model: " .. obj.Name)
+                                            break
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end)
+                    
+                    if shouldTransform and not isTransformed then
+                        pcall(function()
+                            local handlerEvent = char.PlayerHandler:FindFirstChild("HandlerEvent")
+                            if handlerEvent then
+                                print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+                                print("⚡ [Henshin] กำลังแปรงร่าง...")
+                                print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+                                
+                                local args = {{Henshin = true}}
+                                handlerEvent:FireServer(unpack(args))
+                                
+                                isTransformed = true
+                                transformCooldown = tick() + 30
+                                
+                                print("✅ [Henshin] ส่งคำสั่งแล้ว!")
+                                wait(3)
+                            end
+                        end)
+                    else
+                        if isTransformed and currentTime >= transformCooldown then
+                            print("✅ [Henshin] ยืนยัน: แปรงร่างอยู่แล้ว")
+                            transformCooldown = tick() + 60
+                        end
+                    end
+                else
+                    wait(2)
+                end
+            else
+                wait(1)
+            end
+        else
+            isTransformed = false
+            transformCooldown = 0
+            wait(1)
         end
     end
 end)
@@ -2539,15 +2805,15 @@ mineLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     mineContent.CanvasSize = UDim2.new(0, 0, 0, mineLayout.AbsoluteContentSize.Y + 20)
 end)
 
--- =================== Quest Tab ===================
 local questTitle = Instance.new("TextLabel", questContent)
-questTitle.Size = UDim2.new(1, 0, 0, 40)
+questTitle.Size = UDim2.new(1, 0, 0, 50)
 questTitle.BackgroundTransparency = 1
-questTitle.Text = "📜 เลือกเควส"
-questTitle.TextColor3 = colors.accent1
+questTitle.Text = "🚀 Remote Quest System\n(ไม่ต้องวาป!)"
+questTitle.TextColor3 = colors.success
 questTitle.Font = Enum.Font.GothamBold
 questTitle.TextSize = 16
 questTitle.TextXAlignment = Enum.TextXAlignment.Center
+questTitle.TextYAlignment = Enum.TextYAlignment.Center
 
 local questButtons = {}
 for idx, questData in ipairs(questDatabase) do
@@ -2687,6 +2953,8 @@ otherTitle.TextXAlignment = Enum.TextXAlignment.Center
 
 createToggle(otherContent, "🔒", "Lock Position", function(on) state.lockPos = on end)
 createToggle(otherContent, "😴", "AFK Mode", function(on) state.afkEnabled = on end)
+createToggle(otherContent, "💚", "Auto Heal (เลือด < 70%)", function(on) state.autoHeal = on end)
+createToggle(otherContent, "⚡", "Auto Henshin (แปรงร่างอัตโนมัติ)", function(on) state.autoHenshin = on end)
 createToggle(otherContent, "⚔️", "Auto Light Attack", function(on) state.autoAttack = on end)
 createToggle(otherContent, "💥", "Auto Heavy Attack", function(on) state.autoHeavyAttack = on end)
 createToggle(otherContent, "❌", "Auto Press X", function(on) state.autoKeyX = on end)
@@ -2694,6 +2962,8 @@ createToggle(otherContent, "🔥", "Auto Skill E", function(on) state.autoSkills
 createToggle(otherContent, "💫", "Auto Skill R", function(on) state.autoSkills.R = on end)
 createToggle(otherContent, "⚡", "Auto Skill C", function(on) state.autoSkills.C = on end)
 createToggle(otherContent, "✨", "Auto Skill V", function(on) state.autoSkills.V = on end)
+
+
 
 otherLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     otherContent.CanvasSize = UDim2.new(0, 0, 0, otherLayout.AbsoluteContentSize.Y + 20)
