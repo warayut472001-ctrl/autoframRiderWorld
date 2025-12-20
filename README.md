@@ -1,7 +1,7 @@
--- AdminAllInOne.lua v5.1 - ULTRA MODERN UI + MULTI-DUNGEON SYSTEM + CRONUS BOSS!
--- 🎨 NEW: Completely Redesigned UI with Modern Aesthetics
--- 🌈 Gradient Colors, Smooth Animations, Glassmorphism Effects
--- ⚡ NEW: Added Cronus Lv.90 Boss Farm
+-- AdminAllInOne.lua v5.2 - MOBILE RESPONSIVE + ULTRA MODERN UI
+-- 📱 NEW: Full Mobile Support with Adaptive Sizing
+-- 🎨 Gradient Colors, Smooth Animations, Glassmorphism Effects
+-- ⚡ Auto Cronus Boss Farm
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -142,7 +142,7 @@ local questDatabase = {
         bossNames = {"Daguba Lv.90", "Mighty Rider Lv.90", "Empowered Daguba Lv.90"},
         icon = "🏛️"
     },
-{
+    {
         id = "quest_hunt_hunted",
         name = "The Hunt Hunted",
         npcName = "Malcom",
@@ -160,7 +160,6 @@ local questDatabase = {
         questType = "kill",
         icon = "🎯"
     },
-    
 }
 
 -- =================== Boss Database ===================
@@ -308,7 +307,6 @@ local function getBoss()
     return nil
 end
 
--- ⚡ NEW: ฟังก์ชันสำหรับหา Cronus Boss
 local function getCronusBoss()
     local livesFolder = workspace:FindFirstChild(livesFolderName)
     if not livesFolder then return nil end
@@ -368,7 +366,6 @@ local function getNPCFromPath(path)
     return current
 end
 
--- =================== 🚀 SMART QUEST SYSTEM (วาปแค่ครั้งเดียว แล้วรับเควสเร็ว!) ===================
 local function smartWarpToNPC(questData)
     local npc = getNPCFromPath(questData.npcPath)
     if not npc or not npc:FindFirstChild("HumanoidRootPart") then
@@ -381,7 +378,6 @@ local function smartWarpToNPC(questData)
     
     print("🚀 [Quest] วาปไป NPC: " .. questData.npcName)
     
-    -- วาปไปหา NPC แบบเร็ว (แค่ครั้งเดียว!)
     local npcCFrame = npc.HumanoidRootPart.CFrame * CFrame.new(0, 0, 3)
     
     for i = 1, 5 do
@@ -400,7 +396,6 @@ end
 local function fastAcceptQuest(questData, npc)
     print("📥 [Quest] กำลังรับเควส...")
     
-    -- คลิก NPC แบบเร็ว
     for i = 1, 3 do
         clickNPC(npc)
         wait(0.2)
@@ -408,7 +403,6 @@ local function fastAcceptQuest(questData, npc)
     
     wait(0.5)
     
-    -- ส่งคำสั่งรับเควส
     pcall(function()
         if questData.dialogueSteps then
             for i, step in ipairs(questData.dialogueSteps) do
@@ -428,7 +422,6 @@ end
 local function fastSubmitQuest(questData, npc)
     print("📤 [Quest] กำลังส่งเควส...")
     
-    -- คลิก NPC แบบเร็ว
     for i = 1, 3 do
         clickNPC(npc)
         wait(0.2)
@@ -436,7 +429,6 @@ local function fastSubmitQuest(questData, npc)
     
     wait(0.5)
     
-    -- ส่งคำสั่งส่งเควส
     pcall(function()
         local args = {{Choice = "Yes, I've completed it."}}
         ReplicatedStorage:WaitForChild("Remote"):WaitForChild("Event"):WaitForChild("Dialogue"):FireServer(unpack(args))
@@ -794,7 +786,7 @@ spawn(function()
                 lastLevelCheckTime = currentTime
                 
                 if levelFarmCurrentLevel then
-                    levelFarmCurrentLevel.Text = "📊 เลเวลปัจจุบัน: " .. playerLevel
+                    levelFarmCurrentLevel.Text = "📊 เลเวล: " .. playerLevel
                 end
                 
                 if playerLevel >= 80 then
@@ -887,7 +879,7 @@ spawn(function()
     end
 end)
 
--- =================== Auto Quest Loop (SMART FAST!) ===================
+-- =================== Auto Quest Loop ===================
 spawn(function()
     while programRunning do
         if state.autoQuest and state.selectedQuest then
@@ -908,17 +900,14 @@ spawn(function()
                 print("🚀 [Quest] เริ่มรับเควส: " .. questData.name)
                 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
                 
-                -- 🚀 วาปไป NPC (แค่ครั้งเดียว!)
                 if not smartWarpToNPC(questData) then
                     combatPaused = false
                     wait(3)
                     continue
                 end
                 
-                -- รับเควสแบบเร็ว
                 fastAcceptQuest(questData, npc)
                 
-                -- เช็คว่ารับเควสสำเร็จหรือไม่
                 local questReceived = false
                 for i = 1, 15 do
                     if hasActiveQuest(questData) then
@@ -1111,17 +1100,14 @@ spawn(function()
                 print("📤 [Quest] กลับไปส่งเควส")
                 print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
                 
-                -- 🚀 วาปกลับไป NPC (แค่ครั้งเดียว!)
                 if not smartWarpToNPC(questData) then
                     combatPaused = false
                     wait(3)
                     continue
                 end
                 
-                -- ส่งเควสแบบเร็ว
                 fastSubmitQuest(questData, npc)
                 
-                -- เช็คว่าส่งเควสสำเร็จหรือไม่
                 local questSubmitted = false
                 for i = 1, 15 do
                     if not hasActiveQuest(questData) then
@@ -1248,7 +1234,7 @@ spawn(function()
     end
 end)
 
--- ⚡ Auto Cronus Boss Loop (GUARANTEED TO WORK!)
+-- =================== Auto Cronus Boss Loop ===================
 spawn(function()
     while programRunning do
         if state.autoCronus then
@@ -1257,17 +1243,16 @@ spawn(function()
             print("🛑 [Cronus] Auto Attack/Skills/X จะไม่ทำงานจนกว่าจะเจอบอส!")
             print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
             
-            -- อัปเดต UI
             if cronusStatusLabel then
                 cronusStatusLabel.Text = "🔍 สถานะ: ค้นหาบอส..."
-                cronusStatusLabel.TextColor3 = colors.info
+                cronusStatusLabel.TextColor3 = Color3.fromRGB(59, 130, 246)
             end
             if cronusCombatLabel then
                 cronusCombatLabel.Text = "⚔️ Combat: ❌ STOP!"
-                cronusCombatLabel.TextColor3 = colors.danger
+                cronusCombatLabel.TextColor3 = Color3.fromRGB(239, 68, 68)
             end
             if cronusStatusStroke then
-                cronusStatusStroke.Color = colors.info
+                cronusStatusStroke.Color = Color3.fromRGB(59, 130, 246)
             end
             
             local hrp = getHRP()
@@ -1280,17 +1265,15 @@ spawn(function()
                     if bossHRP then
                         print("✅ [Cronus] พบบอสแล้ว! กำลังวาร์ป...")
                         
-                        -- อัปเดต UI
                         if cronusStatusLabel then
                             cronusStatusLabel.Text = "✅ พบบอส! กำลังวาร์ป..."
-                            cronusStatusLabel.TextColor3 = colors.warning
+                            cronusStatusLabel.TextColor3 = Color3.fromRGB(245, 158, 11)
                         end
                         if cronusCombatLabel then
                             cronusCombatLabel.Text = "⚔️ Combat: 🔄 กำลังวาร์ป..."
-                            cronusCombatLabel.TextColor3 = colors.warning
+                            cronusCombatLabel.TextColor3 = Color3.fromRGB(245, 158, 11)
                         end
                         
-                        -- วาร์ปไปหาบอส
                         local backDistance = 3
                         local backPos = bossHRP.Position - bossHRP.CFrame.LookVector * backDistance
                         
@@ -1310,26 +1293,23 @@ spawn(function()
                         print("✅ ตอนนี้ Auto Attack/Skills/X จะทำงานได้!")
                         print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
                         
-                        -- ⚠️ KEY CHANGE: ปิด autoCronus ชั่วคราวเพื่อให้ตีได้!
                         local tempCronusState = true
                         state.autoCronus = false
                         
                         wait(1)
                         
-                        -- อัปเดต UI
                         if cronusStatusLabel then
                             cronusStatusLabel.Text = "⚔️ สถานะ: กำลังตีบอส!"
-                            cronusStatusLabel.TextColor3 = colors.success
+                            cronusStatusLabel.TextColor3 = Color3.fromRGB(16, 185, 129)
                         end
                         if cronusCombatLabel then
                             cronusCombatLabel.Text = "⚔️ Combat: ✅ กำลังตี!"
-                            cronusCombatLabel.TextColor3 = colors.success
+                            cronusCombatLabel.TextColor3 = Color3.fromRGB(16, 185, 129)
                         end
                         if cronusStatusStroke then
-                            cronusStatusStroke.Color = colors.success
+                            cronusStatusStroke.Color = Color3.fromRGB(16, 185, 129)
                         end
                         
-                        -- Loop ตีบอส
                         print("⚔️ [Cronus] Loop ตีบอส...")
                         while programRunning and tempCronusState and boss.Parent and boss.Humanoid.Health > 0 do
                             if bossHRP and bossHRP.Parent then
@@ -1348,20 +1328,18 @@ spawn(function()
                         
                         print("💀 [Cronus] บอสตาย! เปิด Auto Cronus กลับมา...")
                         
-                        -- เปิด autoCronus กลับมา
                         state.autoCronus = tempCronusState
                         
-                        -- อัปเดต UI
                         if cronusStatusLabel then
                             cronusStatusLabel.Text = "💀 บอสตาย! รอค้นหาใหม่..."
-                            cronusStatusLabel.TextColor3 = colors.warning
+                            cronusStatusLabel.TextColor3 = Color3.fromRGB(245, 158, 11)
                         end
                         if cronusCombatLabel then
                             cronusCombatLabel.Text = "⚔️ Combat: ❌ หยุดตี"
-                            cronusCombatLabel.TextColor3 = colors.danger
+                            cronusCombatLabel.TextColor3 = Color3.fromRGB(239, 68, 68)
                         end
                         if cronusStatusStroke then
-                            cronusStatusStroke.Color = colors.warning
+                            cronusStatusStroke.Color = Color3.fromRGB(245, 158, 11)
                         end
                         
                         wait(5)
@@ -1371,11 +1349,11 @@ spawn(function()
                     
                     if cronusStatusLabel then
                         cronusStatusLabel.Text = "❌ ยังไม่พบบอส..."
-                        cronusStatusLabel.TextColor3 = colors.danger
+                        cronusStatusLabel.TextColor3 = Color3.fromRGB(239, 68, 68)
                     end
                     if cronusCombatLabel then
                         cronusCombatLabel.Text = "⚔️ Combat: ❌ STOP!"
-                        cronusCombatLabel.TextColor3 = colors.danger
+                        cronusCombatLabel.TextColor3 = Color3.fromRGB(239, 68, 68)
                     end
                     
                     wait(3)
@@ -1543,7 +1521,7 @@ spawn(function()
     end
 end)
 
--- =================== Auto Boss Loop (Possessed Rider) ===================
+-- =================== Auto Boss Loop ===================
 spawn(function()
     while programRunning do
         if state.autoBoss then
@@ -1583,14 +1561,13 @@ spawn(function()
     end
 end)
 
--- =================== Auto Mine Loop (WARP MODE! วาปตีทีละตัว!) ===================
+-- =================== Auto Mine Loop ===================
 spawn(function()
     while programRunning do
         if state.autoMine then
             local hrp = getHRP()
             local livesFolder = workspace:FindFirstChild(livesFolderName)
             if hrp and livesFolder then
-                -- 1️⃣ หามอน Miner ทั้งหมดที่ยังมีชีวิต
                 local miners = {}
                 for _, mob in ipairs(livesFolder:GetChildren()) do
                     if mob.Name == "Miner Goon Lv.50" and mob:FindFirstChild("HumanoidRootPart") and mob:FindFirstChild("Humanoid") then
@@ -1600,33 +1577,27 @@ spawn(function()
                     end
                 end
                 
-                -- 2️⃣ เรียงตามระยะใกล้-ไกล
                 table.sort(miners, function(a, b)
                     return (hrp.Position - a.HumanoidRootPart.Position).Magnitude < (hrp.Position - b.HumanoidRootPart.Position).Magnitude
                 end)
                 
-                -- 3️⃣ เลือกแค่ 3 ตัวแรก
                 local targetMiners = {}
                 for i = 1, math.min(3, #miners) do 
                     table.insert(targetMiners, miners[i]) 
                 end
                 
-                -- 4️⃣ วาปไปตีทีละตัว (ไม่ดึงมอนมา!)
                 for mobIndex, mob in ipairs(targetMiners) do
                     if not (programRunning and state.autoMine) then break end
                     
                     local mobHRP = mob:FindFirstChild("HumanoidRootPart")
                     local humanoid = mob:FindFirstChild("Humanoid")
                     
-                    -- เช็คว่ามอนยังมีชีวิตอยู่ไหม
                     if mobHRP and humanoid and humanoid.Health > 0 and mob.Parent then
                         
                         print("⛏️ [Mine] กำลังวาปไปตีมอนตัวที่ " .. mobIndex .. "/3")
                         
-                        -- ✅ ระยะตี (ใกล้มาก!)
                         local attackDistance = 2.5
                         
-                        -- 🚀 วาปไปหน้ามอนหลายครั้งเพื่อให้แน่ใจ
                         for warpCount = 1, 5 do
                             if not mobHRP.Parent then break end
                             
@@ -1642,12 +1613,10 @@ spawn(function()
                             wait(0.05)
                         end
                         
-                        -- รอให้ตัวละครอยู่นิ่ง
                         wait(0.2)
                         
                         print("⚔️ [Mine] เริ่มตีมอนตัวที่ " .. mobIndex)
                         
-                        -- ✅ Loop ตีจนกว่ามอนจะตาย
                         while programRunning and state.autoMine and mob.Parent and humanoid.Health > 0 do
                             if mobHRP and mobHRP.Parent then
                                 local desired = mobHRP.Position - mobHRP.CFrame.LookVector * attackDistance
@@ -1665,14 +1634,12 @@ spawn(function()
                         
                         print("💀 [Mine] มอนตัวที่ " .. mobIndex .. " ตายแล้ว! วาปไปตัวถัดไป...")
                         
-                        -- ✅ รอให้มอนตายจริงๆ ก่อนไปตัวถัดไป
                         wait(0.5)
                     else
                         print("⚠️ [Mine] มอนตัวที่ " .. mobIndex .. " ตายไปแล้ว ข้าม!")
                     end
                 end
                 
-                -- รอหน่อยก่อนเริ่มรอบใหม่
                 wait(1)
             else
                 wait(1)
@@ -1683,10 +1650,9 @@ spawn(function()
     end
 end)
 
--- =================== Auto Light Attack (100% FIXED!) ===================
+-- =================== Auto Light Attack ===================
 spawn(function()
     while programRunning do
-        -- ⚠️ ถ้า Auto Cronus เปิดอยู่ → ห้ามทำงานเลย!
         if state.autoCronus then
             wait(0.1)
         elseif state.autoAttack and not combatPaused then
@@ -1711,10 +1677,9 @@ spawn(function()
     end
 end)
 
--- =================== Auto Heavy Attack (100% FIXED!) ===================
+-- =================== Auto Heavy Attack ===================
 spawn(function()
     while programRunning do
-        -- ⚠️ ถ้า Auto Cronus เปิดอยู่ → ห้ามทำงานเลย!
         if state.autoCronus then
             wait(0.1)
         elseif state.autoHeavyAttack and not combatPaused then
@@ -1739,19 +1704,16 @@ spawn(function()
     end
 end)
 
-
--- =================== Auto Skills (UNIVERSAL - รองรับทุกมาสไรเดอร์!) ===================
+-- =================== Auto Skills ===================
 for _, skillKey in ipairs({"E", "R", "C", "V"}) do
     spawn(function()
         while programRunning do
-            -- ⚠️ ถ้า Auto Cronus เปิดอยู่ → ห้ามทำงานเลย!
             if state.autoCronus then
                 wait(0.1)
             elseif state.autoSkills[skillKey] and not combatPaused then
                 local char = getChar()
                 local event = char:FindFirstChild("PlayerHandler") and char.PlayerHandler:FindFirstChild("HandlerEvent")
                 if event then
-                    -- ใช้ Mouse position จริงเพื่อรองรับทุกมาสไรเดอร์
                     local mouse = player:GetMouse()
                     local mousePos = mouse.Hit
                     
@@ -1773,10 +1735,9 @@ for _, skillKey in ipairs({"E", "R", "C", "V"}) do
     end)
 end
 
--- =================== Auto Press X (100% FIXED!) ===================
+-- =================== Auto Press X ===================
 spawn(function()
     while programRunning do
-        -- ⚠️ ถ้า Auto Cronus เปิดอยู่ → ห้ามทำงานเลย!
         if state.autoCronus then
             wait(0.1)
         elseif state.autoKeyX and not combatPaused then
@@ -1822,7 +1783,7 @@ spawn(function()
     end
 end)
 
--- ===================  Auto Heal (NEW!) ===================
+-- =================== Auto Heal ===================
 spawn(function()
     while programRunning do
         if state.autoHeal then
@@ -1832,7 +1793,6 @@ spawn(function()
             if humanoid then
                 local healthPercent = (humanoid.Health / humanoid.MaxHealth) * 100
                 
-                -- ถ้าเลือดต่ำกว่า 70% ให้ฮิล
                 if healthPercent < 70 then
                     pcall(function()
                         local handlerEvent = char:FindFirstChild("PlayerHandler") and char.PlayerHandler:FindFirstChild("HandlerEvent")
@@ -1845,9 +1805,9 @@ spawn(function()
                             handlerEvent:FireServer(unpack(args))
                         end
                     end)
-                    wait(0.3) -- ความเร็วส่งข้อมูล
+                    wait(0.3)
                 else
-                    wait(0.5) -- เช็คบ่อยๆ Log
+                    wait(0.5)
                 end
             else
                 wait(1)
@@ -1858,7 +1818,7 @@ spawn(function()
     end
 end)
 
--- =================== ⚡ Auto Henshin (TRULY FIXED!) ===================
+-- =================== Auto Henshin ===================
 spawn(function()
     local isTransformed = false
     local lastCheck = 0
@@ -1881,7 +1841,7 @@ spawn(function()
                     pcall(function()
                         local humanoid = char:FindFirstChildOfClass("Humanoid")
                         if humanoid then
-                            local baseMaxHealth = 1400  -- ✅ แก้ตรงนี้! (เดิม 100)
+                            local baseMaxHealth = 1400
                             
                             if humanoid.MaxHealth > baseMaxHealth then
                                 isTransformed = true
@@ -1893,7 +1853,6 @@ spawn(function()
                                 print("⚠️ [Henshin] ยังไม่แปรงร่าง (MaxHP: " .. humanoid.MaxHealth .. ")")
                             end
                             
-                            -- Backup check จาก Model
                             if not isTransformed then
                                 for _, obj in pairs(char:GetChildren()) do
                                     if obj:IsA("Model") or obj:IsA("Accessory") then
@@ -1989,33 +1948,42 @@ spawn(function()
     end
 end)
 
--- =================== 🎨 ULTRA MODERN GUI ===================
+-- =================== 📱 MOBILE RESPONSIVE UI ===================
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "AdminUltraModern"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = player:WaitForChild("PlayerGui")
 
--- 🌈 Modern Gradient Color Scheme
+-- 📱 Detect Screen Size
+local viewportSize = workspace.CurrentCamera.ViewportSize
+local isMobile = viewportSize.X < 800 or viewportSize.Y < 600
+
+-- 🎨 Adaptive Sizing
+local uiScale = isMobile and 0.75 or 1
+local mainWidth = math.floor(520 * uiScale)
+local mainHeight = math.floor(600 * uiScale)
+
+-- 🌈 Modern Color Scheme
 local colors = {
     bg = Color3.fromRGB(15, 15, 20),
     panel = Color3.fromRGB(20, 22, 30),
     cardBg = Color3.fromRGB(25, 27, 35),
-    accent1 = Color3.fromRGB(138, 43, 226), -- Purple
-    accent2 = Color3.fromRGB(75, 0, 130), -- Indigo
-    success = Color3.fromRGB(16, 185, 129), -- Emerald
-    danger = Color3.fromRGB(239, 68, 68), -- Red
-    warning = Color3.fromRGB(245, 158, 11), -- Amber
-    info = Color3.fromRGB(59, 130, 246), -- Blue
+    accent1 = Color3.fromRGB(138, 43, 226),
+    accent2 = Color3.fromRGB(75, 0, 130),
+    success = Color3.fromRGB(16, 185, 129),
+    danger = Color3.fromRGB(239, 68, 68),
+    warning = Color3.fromRGB(245, 158, 11),
+    info = Color3.fromRGB(59, 130, 246),
     text = Color3.fromRGB(248, 250, 252),
     textDim = Color3.fromRGB(148, 163, 184),
     hover = Color3.fromRGB(30, 32, 40)
 }
 
--- 🎭 Main Container with Glassmorphism Effect
+-- 🎭 Main Container
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "Main"
-mainFrame.Size = UDim2.new(0, 520, 0, 600)
-mainFrame.Position = UDim2.new(0.5, -260, 0.5, -300)
+mainFrame.Size = UDim2.new(0, mainWidth, 0, mainHeight)
+mainFrame.Position = UDim2.new(0.5, -mainWidth/2, 0.5, -mainHeight/2)
 mainFrame.BackgroundColor3 = colors.bg
 mainFrame.BackgroundTransparency = 0.02
 mainFrame.BorderSizePixel = 0
@@ -2023,15 +1991,14 @@ mainFrame.ClipsDescendants = true
 mainFrame.Parent = screenGui
 
 local mainCorner = Instance.new("UICorner", mainFrame)
-mainCorner.CornerRadius = UDim.new(0, 20)
+mainCorner.CornerRadius = UDim.new(0, math.floor(20 * uiScale))
 
--- ✨ Gradient Border Effect
 local mainStroke = Instance.new("UIStroke", mainFrame)
 mainStroke.Color = colors.accent1
 mainStroke.Thickness = 3
 mainStroke.Transparency = 0.3
 
--- 🎨 Animated Gradient Background
+-- 🎨 Gradient Background
 local gradientBG = Instance.new("Frame", mainFrame)
 gradientBG.Size = UDim2.new(1, 0, 1, 0)
 gradientBG.BackgroundColor3 = colors.panel
@@ -2040,7 +2007,7 @@ gradientBG.BorderSizePixel = 0
 gradientBG.ZIndex = 0
 
 local gradientBGCorner = Instance.new("UICorner", gradientBG)
-gradientBGCorner.CornerRadius = UDim.new(0, 20)
+gradientBGCorner.CornerRadius = UDim.new(0, math.floor(20 * uiScale))
 
 local gradientUI = Instance.new("UIGradient", gradientBG)
 gradientUI.Color = ColorSequence.new{
@@ -2050,7 +2017,6 @@ gradientUI.Color = ColorSequence.new{
 }
 gradientUI.Rotation = 45
 
--- ⚡ Animated Gradient Effect
 spawn(function()
     while programRunning and screenGui.Parent do
         for i = 0, 360, 2 do
@@ -2061,16 +2027,17 @@ spawn(function()
     end
 end)
 
--- 🎯 Modern Top Bar with Gradient
+-- 🎯 Top Bar (Adaptive Size)
+local topBarHeight = math.floor(60 * uiScale)
 local topBar = Instance.new("Frame", mainFrame)
-topBar.Size = UDim2.new(1, 0, 0, 60)
+topBar.Size = UDim2.new(1, 0, 0, topBarHeight)
 topBar.BackgroundColor3 = colors.panel
 topBar.BackgroundTransparency = 0.3
 topBar.BorderSizePixel = 0
 topBar.ZIndex = 2
 
 local topBarCorner = Instance.new("UICorner", topBar)
-topBarCorner.CornerRadius = UDim.new(0, 20)
+topBarCorner.CornerRadius = UDim.new(0, math.floor(20 * uiScale))
 
 local topBarGradient = Instance.new("UIGradient", topBar)
 topBarGradient.Color = ColorSequence.new{
@@ -2083,15 +2050,16 @@ topBarGradient.Transparency = NumberSequence.new{
     NumberSequenceKeypoint.new(1, 0.9)
 }
 
--- 💫 App Icon & Title
+-- 💫 App Icon (Adaptive Size)
+local iconSize = math.floor(45 * uiScale)
 local iconFrame = Instance.new("Frame", topBar)
-iconFrame.Size = UDim2.new(0, 45, 0, 45)
-iconFrame.Position = UDim2.new(0, 15, 0.5, -22.5)
+iconFrame.Size = UDim2.new(0, iconSize, 0, iconSize)
+iconFrame.Position = UDim2.new(0, math.floor(15 * uiScale), 0.5, -iconSize/2)
 iconFrame.BackgroundColor3 = colors.accent1
 iconFrame.BorderSizePixel = 0
 
 local iconCorner = Instance.new("UICorner", iconFrame)
-iconCorner.CornerRadius = UDim.new(0, 12)
+iconCorner.CornerRadius = UDim.new(0, math.floor(12 * uiScale))
 
 local iconGradient = Instance.new("UIGradient", iconFrame)
 iconGradient.Color = ColorSequence.new{
@@ -2106,43 +2074,47 @@ iconLabel.BackgroundTransparency = 1
 iconLabel.Text = "⚡"
 iconLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 iconLabel.Font = Enum.Font.GothamBold
-iconLabel.TextSize = 26
+iconLabel.TextSize = math.floor(26 * uiScale)
 
+-- 📝 Title (Adaptive Size)
+local titleSize = math.floor(22 * uiScale)
 local title = Instance.new("TextLabel", topBar)
-title.Size = UDim2.new(0, 300, 1, 0)
-title.Position = UDim2.new(0, 70, 0, 0)
+title.Size = UDim2.new(0, mainWidth - 200, 1, 0)
+title.Position = UDim2.new(0, math.floor(70 * uiScale), 0, 0)
 title.BackgroundTransparency = 1
-title.Text = "ULTRA ADMIN"
+title.Text = isMobile and "ULTRA ADMIN" or "ULTRA ADMIN"
 title.TextColor3 = colors.text
 title.Font = Enum.Font.GothamBold
-title.TextSize = 22
+title.TextSize = titleSize
 title.TextXAlignment = Enum.TextXAlignment.Left
+title.TextScaled = isMobile
 
 local subtitle = Instance.new("TextLabel", topBar)
-subtitle.Size = UDim2.new(0, 300, 0, 18)
-subtitle.Position = UDim2.new(0, 70, 0, 32)
+subtitle.Size = UDim2.new(0, 300, 0, math.floor(18 * uiScale))
+subtitle.Position = UDim2.new(0, math.floor(70 * uiScale), 0, topBarHeight - math.floor(22 * uiScale))
 subtitle.BackgroundTransparency = 1
-subtitle.Text = "v5.1 • Cronus Edition"
+subtitle.Text = "v5.2 • Mobile Ready"
 subtitle.TextColor3 = colors.textDim
 subtitle.Font = Enum.Font.Gotham
-subtitle.TextSize = 11
+subtitle.TextSize = math.floor(11 * uiScale)
 subtitle.TextXAlignment = Enum.TextXAlignment.Left
 
--- 🎮 Control Buttons
+-- 🎮 Control Buttons (Adaptive Size)
+local btnSize = math.floor(38 * uiScale)
 local function createTopButton(icon, color, position)
     local btn = Instance.new("TextButton", topBar)
-    btn.Size = UDim2.new(0, 38, 0, 38)
-    btn.Position = UDim2.new(1, position, 0.5, -19)
+    btn.Size = UDim2.new(0, btnSize, 0, btnSize)
+    btn.Position = UDim2.new(1, position, 0.5, -btnSize/2)
     btn.Text = icon
     btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 18
+    btn.TextSize = math.floor(18 * uiScale)
     btn.BackgroundColor3 = color
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.BorderSizePixel = 0
     btn.AutoButtonColor = false
     
     local btnCorner = Instance.new("UICorner", btn)
-    btnCorner.CornerRadius = UDim.new(0, 10)
+    btnCorner.CornerRadius = UDim.new(0, math.floor(10 * uiScale))
     
     local btnGradient = Instance.new("UIGradient", btn)
     btnGradient.Color = ColorSequence.new{
@@ -2166,15 +2138,15 @@ local function createTopButton(icon, color, position)
     return btn
 end
 
-local btnMin = createTopButton("━", colors.info, -90)
-local btnClose = createTopButton("✕", colors.danger, -45)
+local btnMin = createTopButton("━", colors.info, math.floor(-90 * uiScale))
+local btnClose = createTopButton("✕", colors.danger, math.floor(-45 * uiScale))
 
 -- 🎯 Draggable Top Bar
 local dragging = false
 local dragStart, startPos
 
 topBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         dragging = true
         dragStart = input.Position
         startPos = mainFrame.Position
@@ -2187,7 +2159,7 @@ topBar.InputBegan:Connect(function(input)
 end)
 
 topBar.InputChanged:Connect(function(input)
-    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
         local delta = input.Position - dragStart
         local newX = startPos.X.Offset + delta.X
         local newY = startPos.Y.Offset + delta.Y
@@ -2198,41 +2170,45 @@ topBar.InputChanged:Connect(function(input)
     end
 end)
 
--- 📑 Modern Tab Container
+-- 📑 Tab Container (Adaptive)
+local tabHeight = math.floor(70 * uiScale)
 local tabContainer = Instance.new("ScrollingFrame", mainFrame)
-tabContainer.Size = UDim2.new(1, -20, 0, 70)
-tabContainer.Position = UDim2.new(0, 10, 0, 70)
+tabContainer.Size = UDim2.new(1, -math.floor(20 * uiScale), 0, tabHeight)
+tabContainer.Position = UDim2.new(0, math.floor(10 * uiScale), 0, topBarHeight + math.floor(10 * uiScale))
 tabContainer.BackgroundTransparency = 1
 tabContainer.BorderSizePixel = 0
 tabContainer.ScrollBarThickness = 0
-tabContainer.CanvasSize = UDim2.new(0, 650, 0, 70)
+tabContainer.CanvasSize = UDim2.new(0, math.floor(650 * uiScale), 0, tabHeight)
 tabContainer.ScrollingDirection = Enum.ScrollingDirection.X
 
 local tabLayout = Instance.new("UIListLayout", tabContainer)
 tabLayout.FillDirection = Enum.FillDirection.Horizontal
-tabLayout.Padding = UDim.new(0, 8)
+tabLayout.Padding = UDim.new(0, math.floor(8 * uiScale))
 tabLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
 
 -- 📄 Content Container
+local contentYPos = topBarHeight + tabHeight + math.floor(20 * uiScale)
 local contentContainer = Instance.new("Frame", mainFrame)
-contentContainer.Size = UDim2.new(1, -20, 1, -160)
-contentContainer.Position = UDim2.new(0, 10, 0, 150)
+contentContainer.Size = UDim2.new(1, -math.floor(20 * uiScale), 1, -contentYPos - math.floor(10 * uiScale))
+contentContainer.Position = UDim2.new(0, math.floor(10 * uiScale), 0, contentYPos)
 contentContainer.BackgroundColor3 = colors.cardBg
 contentContainer.BackgroundTransparency = 0.3
 contentContainer.BorderSizePixel = 0
 
 local contentCorner = Instance.new("UICorner", contentContainer)
-contentCorner.CornerRadius = UDim.new(0, 16)
+contentCorner.CornerRadius = UDim.new(0, math.floor(16 * uiScale))
 
 local contentStroke = Instance.new("UIStroke", contentContainer)
 contentStroke.Color = colors.accent1
 contentStroke.Transparency = 0.8
 contentStroke.Thickness = 1
 
--- 🎨 Create Modern Tab Function
+-- 🎨 Create Tab Function (Adaptive)
+local tabWidth = math.floor(95 * uiScale)
+local tabHeightBtn = math.floor(62 * uiScale)
 local function createTab(icon, text, order)
     local btn = Instance.new("TextButton", tabContainer)
-    btn.Size = UDim2.new(0, 95, 0, 62)
+    btn.Size = UDim2.new(0, tabWidth, 0, tabHeightBtn)
     btn.Text = ""
     btn.BackgroundColor3 = colors.cardBg
     btn.BackgroundTransparency = 0.5
@@ -2241,7 +2217,7 @@ local function createTab(icon, text, order)
     btn.LayoutOrder = order
     
     local corner = Instance.new("UICorner", btn)
-    corner.CornerRadius = UDim.new(0, 12)
+    corner.CornerRadius = UDim.new(0, math.floor(12 * uiScale))
     
     local stroke = Instance.new("UIStroke", btn)
     stroke.Color = colors.accent1
@@ -2249,22 +2225,23 @@ local function createTab(icon, text, order)
     stroke.Thickness = 1.5
     
     local iconLabel = Instance.new("TextLabel", btn)
-    iconLabel.Size = UDim2.new(1, 0, 0, 30)
-    iconLabel.Position = UDim2.new(0, 0, 0, 8)
+    iconLabel.Size = UDim2.new(1, 0, 0, math.floor(30 * uiScale))
+    iconLabel.Position = UDim2.new(0, 0, 0, math.floor(8 * uiScale))
     iconLabel.BackgroundTransparency = 1
     iconLabel.Text = icon
     iconLabel.Font = Enum.Font.GothamBold
-    iconLabel.TextSize = 20
+    iconLabel.TextSize = math.floor(20 * uiScale)
     iconLabel.TextColor3 = colors.textDim
     
     local textLabel = Instance.new("TextLabel", btn)
-    textLabel.Size = UDim2.new(1, 0, 0, 18)
-    textLabel.Position = UDim2.new(0, 0, 1, -24)
+    textLabel.Size = UDim2.new(1, 0, 0, math.floor(18 * uiScale))
+    textLabel.Position = UDim2.new(0, 0, 1, -math.floor(24 * uiScale))
     textLabel.BackgroundTransparency = 1
     textLabel.Text = text
     textLabel.Font = Enum.Font.GothamBold
-    textLabel.TextSize = 10
+    textLabel.TextSize = math.floor(10 * uiScale)
     textLabel.TextColor3 = colors.textDim
+    textLabel.TextScaled = isMobile
     
     btn.MouseEnter:Connect(function()
         if btn.BackgroundTransparency ~= 0 then
@@ -2286,15 +2263,15 @@ end
 local tabFarm, tabFarmIcon, tabFarmText, tabFarmStroke = createTab("🎯", "Farm", 1)
 local tabBoss, tabBossIcon, tabBossText, tabBossStroke = createTab("👹", "Boss", 2)
 local tabMine, tabMineIcon, tabMineText, tabMineStroke = createTab("⛏️", "Mine", 3)
-local tabQuest, tabQuestIcon, tabQuestText, tabQuestStroke = createTab("📜", "เควส", 4)
+local tabQuest, tabQuestIcon, tabQuestText, tabQuestStroke = createTab("📜", "Quest", 4)
 local tabEvent, tabEventIcon, tabEventText, tabEventStroke = createTab("🎃", "Event", 5)
 local tabOther, tabOtherIcon, tabOtherText, tabOtherStroke = createTab("⚙️", "Other", 6)
 
 -- 📋 Create Content Scrolls
 local function createContent()
     local scroll = Instance.new("ScrollingFrame", contentContainer)
-    scroll.Size = UDim2.new(1, -20, 1, -20)
-    scroll.Position = UDim2.new(0, 10, 0, 10)
+    scroll.Size = UDim2.new(1, -math.floor(20 * uiScale), 1, -math.floor(20 * uiScale))
+    scroll.Position = UDim2.new(0, math.floor(10 * uiScale), 0, math.floor(10 * uiScale))
     scroll.BackgroundTransparency = 1
     scroll.BorderSizePixel = 0
     scroll.ScrollBarThickness = 5
@@ -2302,7 +2279,7 @@ local function createContent()
     scroll.Visible = false
     
     local layout = Instance.new("UIListLayout", scroll)
-    layout.Padding = UDim.new(0, 12)
+    layout.Padding = UDim.new(0, math.floor(12 * uiScale))
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
     
@@ -2316,50 +2293,52 @@ local questContent, questLayout = createContent()
 local eventContent, eventLayout = createContent()
 local otherContent, otherLayout = createContent()
 
--- 🎨 Modern Toggle Switch
+-- 🎨 Modern Toggle Switch (Adaptive)
+local toggleHeight = math.floor(60 * uiScale)
 local function createToggle(parent, icon, text, callback)
     local container = Instance.new("Frame", parent)
-    container.Size = UDim2.new(1, 0, 0, 60)
+    container.Size = UDim2.new(1, 0, 0, toggleHeight)
     container.BackgroundColor3 = colors.cardBg
     container.BorderSizePixel = 0
     
     local corner = Instance.new("UICorner", container)
-    corner.CornerRadius = UDim.new(0, 12)
+    corner.CornerRadius = UDim.new(0, math.floor(12 * uiScale))
     
     local stroke = Instance.new("UIStroke", container)
     stroke.Color = colors.accent1
     stroke.Transparency = 0.85
     stroke.Thickness = 1
     
-    -- Icon
+    local iconSize = math.floor(40 * uiScale)
     local iconLabel = Instance.new("TextLabel", container)
-    iconLabel.Size = UDim2.new(0, 40, 0, 40)
-    iconLabel.Position = UDim2.new(0, 10, 0.5, -20)
+    iconLabel.Size = UDim2.new(0, iconSize, 0, iconSize)
+    iconLabel.Position = UDim2.new(0, math.floor(10 * uiScale), 0.5, -iconSize/2)
     iconLabel.BackgroundColor3 = colors.panel
     iconLabel.Text = icon
     iconLabel.Font = Enum.Font.GothamBold
-    iconLabel.TextSize = 20
+    iconLabel.TextSize = math.floor(20 * uiScale)
     iconLabel.TextColor3 = colors.accent1
     
     local iconCorner = Instance.new("UICorner", iconLabel)
-    iconCorner.CornerRadius = UDim.new(0, 10)
+    iconCorner.CornerRadius = UDim.new(0, math.floor(10 * uiScale))
     
-    -- Text
     local label = Instance.new("TextLabel", container)
-    label.Size = UDim2.new(1, -140, 1, 0)
-    label.Position = UDim2.new(0, 60, 0, 0)
+    label.Size = UDim2.new(1, -math.floor(140 * uiScale), 1, 0)
+    label.Position = UDim2.new(0, math.floor(60 * uiScale), 0, 0)
     label.BackgroundTransparency = 1
     label.Text = text
     label.TextColor3 = colors.text
     label.Font = Enum.Font.GothamBold
-    label.TextSize = 13
+    label.TextSize = math.floor(13 * uiScale)
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.TextWrapped = true
+    label.TextScaled = isMobile
     
-    -- Toggle Switch
+    local toggleWidth = math.floor(60 * uiScale)
+    local toggleHeightSwitch = math.floor(32 * uiScale)
     local toggleBG = Instance.new("TextButton", container)
-    toggleBG.Size = UDim2.new(0, 60, 0, 32)
-    toggleBG.Position = UDim2.new(1, -70, 0.5, -16)
+    toggleBG.Size = UDim2.new(0, toggleWidth, 0, toggleHeightSwitch)
+    toggleBG.Position = UDim2.new(1, -toggleWidth - math.floor(10 * uiScale), 0.5, -toggleHeightSwitch/2)
     toggleBG.Text = ""
     toggleBG.BackgroundColor3 = colors.panel
     toggleBG.BorderSizePixel = 0
@@ -2368,9 +2347,10 @@ local function createToggle(parent, icon, text, callback)
     local toggleBGCorner = Instance.new("UICorner", toggleBG)
     toggleBGCorner.CornerRadius = UDim.new(1, 0)
     
+    local indicatorSize = math.floor(26 * uiScale)
     local toggleIndicator = Instance.new("Frame", toggleBG)
-    toggleIndicator.Size = UDim2.new(0, 26, 0, 26)
-    toggleIndicator.Position = UDim2.new(0, 3, 0.5, -13)
+    toggleIndicator.Size = UDim2.new(0, indicatorSize, 0, indicatorSize)
+    toggleIndicator.Position = UDim2.new(0, math.floor(3 * uiScale), 0.5, -indicatorSize/2)
     toggleIndicator.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     toggleIndicator.BorderSizePixel = 0
     
@@ -2388,7 +2368,7 @@ local function createToggle(parent, icon, text, callback)
         isOn = not isOn
         
         local bgColor = isOn and colors.success or colors.panel
-        local position = isOn and UDim2.new(1, -29, 0.5, -13) or UDim2.new(0, 3, 0.5, -13)
+        local position = isOn and UDim2.new(1, -indicatorSize - math.floor(3 * uiScale), 0.5, -indicatorSize/2) or UDim2.new(0, math.floor(3 * uiScale), 0.5, -indicatorSize/2)
         
         TweenService:Create(toggleBG, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
             BackgroundColor3 = bgColor
@@ -2420,14 +2400,15 @@ end
 -- =================== Farm Tab Content ===================
 farmContent.Visible = true
 
--- Level Farm Info Card
+-- Level Farm Info Card (Adaptive)
+local levelCardHeight = math.floor(150 * uiScale)
 local levelFarmCard = Instance.new("Frame", farmContent)
-levelFarmCard.Size = UDim2.new(1, 0, 0, 150)
+levelFarmCard.Size = UDim2.new(1, 0, 0, levelCardHeight)
 levelFarmCard.BackgroundColor3 = colors.cardBg
 levelFarmCard.BorderSizePixel = 0
 
 local levelFarmCorner = Instance.new("UICorner", levelFarmCard)
-levelFarmCorner.CornerRadius = UDim.new(0, 12)
+levelFarmCorner.CornerRadius = UDim.new(0, math.floor(12 * uiScale))
 
 local levelFarmStroke = Instance.new("UIStroke", levelFarmCard)
 levelFarmStroke.Color = colors.success
@@ -2441,72 +2422,78 @@ levelFarmGradient.Color = ColorSequence.new{
 }
 levelFarmGradient.Rotation = 45
 
+local levelIconSize = math.floor(90 * uiScale)
 local levelIcon = Instance.new("TextLabel", levelFarmCard)
-levelIcon.Size = UDim2.new(0, 90, 1, -20)
-levelIcon.Position = UDim2.new(0, 10, 0, 10)
+levelIcon.Size = UDim2.new(0, levelIconSize, 1, -math.floor(20 * uiScale))
+levelIcon.Position = UDim2.new(0, math.floor(10 * uiScale), 0, math.floor(10 * uiScale))
 levelIcon.BackgroundColor3 = colors.panel
 levelIcon.Text = "🚀"
 levelIcon.Font = Enum.Font.GothamBold
-levelIcon.TextSize = 50
+levelIcon.TextSize = math.floor(50 * uiScale)
 
 local levelIconCorner = Instance.new("UICorner", levelIcon)
-levelIconCorner.CornerRadius = UDim.new(0, 10)
+levelIconCorner.CornerRadius = UDim.new(0, math.floor(10 * uiScale))
 
 local levelInfoFrame = Instance.new("Frame", levelFarmCard)
-levelInfoFrame.Size = UDim2.new(1, -120, 1, -20)
-levelInfoFrame.Position = UDim2.new(0, 110, 0, 10)
+levelInfoFrame.Size = UDim2.new(1, -levelIconSize - math.floor(30 * uiScale), 1, -math.floor(20 * uiScale))
+levelInfoFrame.Position = UDim2.new(0, levelIconSize + math.floor(20 * uiScale), 0, math.floor(10 * uiScale))
 levelInfoFrame.BackgroundTransparency = 1
 
 local levelTitle = Instance.new("TextLabel", levelInfoFrame)
-levelTitle.Size = UDim2.new(1, 0, 0, 26)
+levelTitle.Size = UDim2.new(1, 0, 0, math.floor(26 * uiScale))
 levelTitle.BackgroundTransparency = 1
 levelTitle.Text = "🎯 Smart Level Farm"
 levelTitle.TextColor3 = colors.success
 levelTitle.Font = Enum.Font.GothamBold
-levelTitle.TextSize = 16
+levelTitle.TextSize = math.floor(16 * uiScale)
 levelTitle.TextXAlignment = Enum.TextXAlignment.Left
+levelTitle.TextScaled = isMobile
 
 local levelDesc = Instance.new("TextLabel", levelInfoFrame)
-levelDesc.Size = UDim2.new(1, 0, 0, 32)
-levelDesc.Position = UDim2.new(0, 0, 0, 28)
+levelDesc.Size = UDim2.new(1, 0, 0, math.floor(32 * uiScale))
+levelDesc.Position = UDim2.new(0, 0, 0, math.floor(28 * uiScale))
 levelDesc.BackgroundTransparency = 1
 levelDesc.Text = "ระบบฟามอัตโนมัติตามเลเวล\nวาร์ปไปหามอนทุกระยะ หยุดที่ Lv.80"
 levelDesc.TextColor3 = colors.textDim
 levelDesc.Font = Enum.Font.Gotham
-levelDesc.TextSize = 10
+levelDesc.TextSize = math.floor(10 * uiScale)
 levelDesc.TextWrapped = true
 levelDesc.TextXAlignment = Enum.TextXAlignment.Left
 levelDesc.TextYAlignment = Enum.TextYAlignment.Top
+levelDesc.TextScaled = isMobile
 
 levelFarmCurrentLevel = Instance.new("TextLabel", levelInfoFrame)
-levelFarmCurrentLevel.Size = UDim2.new(1, 0, 0, 20)
-levelFarmCurrentLevel.Position = UDim2.new(0, 0, 0, 65)
+levelFarmCurrentLevel.Size = UDim2.new(1, 0, 0, math.floor(20 * uiScale))
+levelFarmCurrentLevel.Position = UDim2.new(0, 0, 0, math.floor(65 * uiScale))
 levelFarmCurrentLevel.BackgroundTransparency = 1
 levelFarmCurrentLevel.Text = "📊 เลเวล: โหลด..."
 levelFarmCurrentLevel.TextColor3 = colors.info
 levelFarmCurrentLevel.Font = Enum.Font.GothamBold
-levelFarmCurrentLevel.TextSize = 11
+levelFarmCurrentLevel.TextSize = math.floor(11 * uiScale)
 levelFarmCurrentLevel.TextXAlignment = Enum.TextXAlignment.Left
+levelFarmCurrentLevel.TextScaled = isMobile
 
 levelFarmCurrentTarget = Instance.new("TextLabel", levelInfoFrame)
-levelFarmCurrentTarget.Size = UDim2.new(1, 0, 0, 20)
-levelFarmCurrentTarget.Position = UDim2.new(0, 0, 0, 88)
+levelFarmCurrentTarget.Size = UDim2.new(1, 0, 0, math.floor(20 * uiScale))
+levelFarmCurrentTarget.Position = UDim2.new(0, 0, 0, math.floor(88 * uiScale))
 levelFarmCurrentTarget.BackgroundTransparency = 1
 levelFarmCurrentTarget.Text = "🎯 เป้าหมาย: ยังไม่เริ่ม"
 levelFarmCurrentTarget.TextColor3 = colors.textDim
 levelFarmCurrentTarget.Font = Enum.Font.GothamBold
-levelFarmCurrentTarget.TextSize = 11
+levelFarmCurrentTarget.TextSize = math.floor(11 * uiScale)
 levelFarmCurrentTarget.TextXAlignment = Enum.TextXAlignment.Left
+levelFarmCurrentTarget.TextScaled = isMobile
 
 levelFarmKillCount = Instance.new("TextLabel", levelInfoFrame)
-levelFarmKillCount.Size = UDim2.new(1, 0, 0, 20)
-levelFarmKillCount.Position = UDim2.new(0, 0, 0, 111)
+levelFarmKillCount.Size = UDim2.new(1, 0, 0, math.floor(20 * uiScale))
+levelFarmKillCount.Position = UDim2.new(0, 0, 0, math.floor(111 * uiScale))
 levelFarmKillCount.BackgroundTransparency = 1
 levelFarmKillCount.Text = "💀 ฆ่าแล้ว: 0 ตัว"
 levelFarmKillCount.TextColor3 = colors.warning
 levelFarmKillCount.Font = Enum.Font.GothamBold
-levelFarmKillCount.TextSize = 11
+levelFarmKillCount.TextSize = math.floor(11 * uiScale)
 levelFarmKillCount.TextXAlignment = Enum.TextXAlignment.Left
+levelFarmKillCount.TextScaled = isMobile
 
 levelFarmStatusLabel = Instance.new("TextLabel", levelInfoFrame)
 levelFarmStatusLabel.Size = UDim2.new(0, 0, 0, 0)
@@ -2535,17 +2522,17 @@ separator1.BackgroundTransparency = 0.85
 separator1.BorderSizePixel = 0
 
 local farmTitle = Instance.new("TextLabel", farmContent)
-farmTitle.Size = UDim2.new(1, 0, 0, 35)
+farmTitle.Size = UDim2.new(1, 0, 0, math.floor(35 * uiScale))
 farmTitle.BackgroundTransparency = 1
 farmTitle.Text = "📋 Manual Farm"
 farmTitle.TextColor3 = colors.accent1
 farmTitle.Font = Enum.Font.GothamBold
-farmTitle.TextSize = 15
+farmTitle.TextSize = math.floor(15 * uiScale)
 farmTitle.TextXAlignment = Enum.TextXAlignment.Left
 farmTitle.TextYAlignment = Enum.TextYAlignment.Center
 
 local farmTitlePadding = Instance.new("UIPadding", farmTitle)
-farmTitlePadding.PaddingLeft = UDim.new(0, 10)
+farmTitlePadding.PaddingLeft = UDim.new(0, math.floor(10 * uiScale))
 
 createToggle(farmContent, "🎯", "Manual Farm (เลือกมอนเอง)", function(on)
     state.autoFarm = on
@@ -2555,14 +2542,15 @@ createToggle(farmContent, "🎯", "Manual Farm (เลือกมอนเอ�
     end
 end)
 
--- Quick Select Buttons
+-- Quick Select Buttons (Adaptive)
+local quickBtnHeight = math.floor(45 * uiScale)
 local quickFrame = Instance.new("Frame", farmContent)
-quickFrame.Size = UDim2.new(1, 0, 0, 45)
+quickFrame.Size = UDim2.new(1, 0, 0, quickBtnHeight)
 quickFrame.BackgroundTransparency = 1
 
 local quickLayout = Instance.new("UIListLayout", quickFrame)
 quickLayout.FillDirection = Enum.FillDirection.Horizontal
-quickLayout.Padding = UDim.new(0, 10)
+quickLayout.Padding = UDim.new(0, math.floor(10 * uiScale))
 quickLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
 local function createQuickBtn(text, icon, color)
@@ -2570,14 +2558,15 @@ local function createQuickBtn(text, icon, color)
     btn.Size = UDim2.new(0.48, 0, 1, 0)
     btn.Text = icon .. " " .. text
     btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 13
+    btn.TextSize = math.floor(13 * uiScale)
     btn.BackgroundColor3 = color
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.BorderSizePixel = 0
     btn.AutoButtonColor = false
+    btn.TextScaled = isMobile
     
     local corner = Instance.new("UICorner", btn)
-    corner.CornerRadius = UDim.new(0, 10)
+    corner.CornerRadius = UDim.new(0, math.floor(10 * uiScale))
     
     local gradient = Instance.new("UIGradient", btn)
     gradient.Color = ColorSequence.new{
@@ -2604,16 +2593,17 @@ end
 local btnAll = createQuickBtn("เลือกทั้งหมด", "✓", colors.success)
 local btnNone = createQuickBtn("ยกเลิกทั้งหมด", "✗", colors.danger)
 
--- Monster Selection List
+-- Monster Selection List (Adaptive)
+local monsterScrollHeight = math.floor(200 * uiScale)
 local monsterScroll = Instance.new("ScrollingFrame", farmContent)
-monsterScroll.Size = UDim2.new(1, 0, 0, 200)
+monsterScroll.Size = UDim2.new(1, 0, 0, monsterScrollHeight)
 monsterScroll.BackgroundColor3 = colors.cardBg
 monsterScroll.BorderSizePixel = 0
 monsterScroll.ScrollBarThickness = 5
 monsterScroll.ScrollBarImageColor3 = colors.accent1
 
 local monsterScrollCorner = Instance.new("UICorner", monsterScroll)
-monsterScrollCorner.CornerRadius = UDim.new(0, 12)
+monsterScrollCorner.CornerRadius = UDim.new(0, math.floor(12 * uiScale))
 
 local monsterScrollStroke = Instance.new("UIStroke", monsterScroll)
 monsterScrollStroke.Color = colors.accent1
@@ -2621,27 +2611,29 @@ monsterScrollStroke.Transparency = 0.85
 monsterScrollStroke.Thickness = 1
 
 local monsterLayout = Instance.new("UIListLayout", monsterScroll)
-monsterLayout.Padding = UDim.new(0, 6)
+monsterLayout.Padding = UDim.new(0, math.floor(6 * uiScale))
 monsterLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
+local monsterBtnHeight = math.floor(40 * uiScale)
 local monsterButtons = {}
 for i, mName in ipairs(targetMonsters) do
     local btn = Instance.new("TextButton", monsterScroll)
-    btn.Size = UDim2.new(1, -12, 0, 40)
+    btn.Size = UDim2.new(1, -math.floor(12 * uiScale), 0, monsterBtnHeight)
     btn.Text = "✓ " .. mName
     btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 12
+    btn.TextSize = math.floor(12 * uiScale)
     btn.BackgroundColor3 = colors.success
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.BorderSizePixel = 0
     btn.TextXAlignment = Enum.TextXAlignment.Left
     btn.AutoButtonColor = false
+    btn.TextScaled = isMobile
     
     local padding = Instance.new("UIPadding", btn)
-    padding.PaddingLeft = UDim.new(0, 12)
+    padding.PaddingLeft = UDim.new(0, math.floor(12 * uiScale))
     
     local corner = Instance.new("UICorner", btn)
-    corner.CornerRadius = UDim.new(0, 8)
+    corner.CornerRadius = UDim.new(0, math.floor(8 * uiScale))
     
     local gradient = Instance.new("UIGradient", btn)
     gradient.Color = ColorSequence.new{
@@ -2666,7 +2658,7 @@ for i, mName in ipairs(targetMonsters) do
     table.insert(monsterButtons, btn)
 end
 
-monsterScroll.CanvasSize = UDim2.new(0, 0, 0, #targetMonsters * 46)
+monsterScroll.CanvasSize = UDim2.new(0, 0, 0, #targetMonsters * math.floor(46 * uiScale))
 
 btnAll.MouseButton1Click:Connect(function()
     for i, mName in ipairs(targetMonsters) do
@@ -2685,78 +2677,80 @@ btnNone.MouseButton1Click:Connect(function()
 end)
 
 farmLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    farmContent.CanvasSize = UDim2.new(0, 0, 0, farmLayout.AbsoluteContentSize.Y + 20)
+    farmContent.CanvasSize = UDim2.new(0, 0, 0, farmLayout.AbsoluteContentSize.Y + math.floor(20 * uiScale))
 end)
 
--- =================== Boss Tab ===================
--- Cronus Status Card
+-- =================== Boss Tab (Adaptive) ===================
+local cronusCardHeight = math.floor(100 * uiScale)
 local cronusStatusCard = Instance.new("Frame", bossContent)
-cronusStatusCard.Size = UDim2.new(1, 0, 0, 100)
+cronusStatusCard.Size = UDim2.new(1, 0, 0, cronusCardHeight)
 cronusStatusCard.BackgroundColor3 = colors.cardBg
 cronusStatusCard.BorderSizePixel = 0
 cronusStatusCard.LayoutOrder = 0
 
 local cronusStatusCorner = Instance.new("UICorner", cronusStatusCard)
-cronusStatusCorner.CornerRadius = UDim.new(0, 12)
+cronusStatusCorner.CornerRadius = UDim.new(0, math.floor(12 * uiScale))
 
-local cronusStatusStroke = Instance.new("UIStroke", cronusStatusCard)
+cronusStatusStroke = Instance.new("UIStroke", cronusStatusCard)
 cronusStatusStroke.Color = colors.warning
 cronusStatusStroke.Thickness = 2
 cronusStatusStroke.Transparency = 0.5
 
+local cronusIconSize = math.floor(70 * uiScale)
 local cronusIcon = Instance.new("TextLabel", cronusStatusCard)
-cronusIcon.Size = UDim2.new(0, 70, 1, -20)
-cronusIcon.Position = UDim2.new(0, 10, 0, 10)
+cronusIcon.Size = UDim2.new(0, cronusIconSize, 1, -math.floor(20 * uiScale))
+cronusIcon.Position = UDim2.new(0, math.floor(10 * uiScale), 0, math.floor(10 * uiScale))
 cronusIcon.BackgroundColor3 = colors.panel
 cronusIcon.Text = "⏰"
 cronusIcon.Font = Enum.Font.GothamBold
-cronusIcon.TextSize = 40
+cronusIcon.TextSize = math.floor(40 * uiScale)
 
 local cronusIconCorner = Instance.new("UICorner", cronusIcon)
-cronusIconCorner.CornerRadius = UDim.new(0, 10)
+cronusIconCorner.CornerRadius = UDim.new(0, math.floor(10 * uiScale))
 
 local cronusInfoFrame = Instance.new("Frame", cronusStatusCard)
-cronusInfoFrame.Size = UDim2.new(1, -100, 1, -20)
-cronusInfoFrame.Position = UDim2.new(0, 90, 0, 10)
+cronusInfoFrame.Size = UDim2.new(1, -cronusIconSize - math.floor(20 * uiScale), 1, -math.floor(20 * uiScale))
+cronusInfoFrame.Position = UDim2.new(0, cronusIconSize + math.floor(20 * uiScale), 0, math.floor(10 * uiScale))
 cronusInfoFrame.BackgroundTransparency = 1
 
 local cronusTitle = Instance.new("TextLabel", cronusInfoFrame)
-cronusTitle.Size = UDim2.new(1, 0, 0, 24)
+cronusTitle.Size = UDim2.new(1, 0, 0, math.floor(24 * uiScale))
 cronusTitle.BackgroundTransparency = 1
 cronusTitle.Text = "⏰ Cronus Boss Status"
 cronusTitle.TextColor3 = colors.warning
 cronusTitle.Font = Enum.Font.GothamBold
-cronusTitle.TextSize = 15
+cronusTitle.TextSize = math.floor(15 * uiScale)
 cronusTitle.TextXAlignment = Enum.TextXAlignment.Left
+cronusTitle.TextScaled = isMobile
 
-local cronusStatusLabel = Instance.new("TextLabel", cronusInfoFrame)
-cronusStatusLabel.Size = UDim2.new(1, 0, 0, 22)
-cronusStatusLabel.Position = UDim2.new(0, 0, 0, 28)
+cronusStatusLabel = Instance.new("TextLabel", cronusInfoFrame)
+cronusStatusLabel.Size = UDim2.new(1, 0, 0, math.floor(22 * uiScale))
+cronusStatusLabel.Position = UDim2.new(0, 0, 0, math.floor(28 * uiScale))
 cronusStatusLabel.BackgroundTransparency = 1
 cronusStatusLabel.Text = "⚪ สถานะ: ปิดอยู่"
 cronusStatusLabel.TextColor3 = colors.textDim
 cronusStatusLabel.Font = Enum.Font.GothamBold
-cronusStatusLabel.TextSize = 12
+cronusStatusLabel.TextSize = math.floor(12 * uiScale)
 cronusStatusLabel.TextXAlignment = Enum.TextXAlignment.Left
+cronusStatusLabel.TextScaled = isMobile
 
-local cronusCombatLabel = Instance.new("TextLabel", cronusInfoFrame)
-cronusCombatLabel.Size = UDim2.new(1, 0, 0, 22)
-cronusCombatLabel.Position = UDim2.new(0, 0, 0, 52)
+cronusCombatLabel = Instance.new("TextLabel", cronusInfoFrame)
+cronusCombatLabel.Size = UDim2.new(1, 0, 0, math.floor(22 * uiScale))
+cronusCombatLabel.Position = UDim2.new(0, 0, 0, math.floor(52 * uiScale))
 cronusCombatLabel.BackgroundTransparency = 1
 cronusCombatLabel.Text = "⚔️ Combat: ปกติ"
 cronusCombatLabel.TextColor3 = colors.success
 cronusCombatLabel.Font = Enum.Font.Gotham
-cronusCombatLabel.TextSize = 11
+cronusCombatLabel.TextSize = math.floor(11 * uiScale)
 cronusCombatLabel.TextXAlignment = Enum.TextXAlignment.Left
+cronusCombatLabel.TextScaled = isMobile
 
 createToggle(bossContent, "👹", "Farm Possessed Rider Lv.90", function(on) state.autoBoss = on end)
 createToggle(bossContent, "⏰", "Farm Cronus Lv.90 (NEW!)", function(on) 
     state.autoCronus = on 
     if on then
-        -- 🛑 หยุดการตีทันทีเมื่อเปิด Auto Cronus (FORCE STOP!)
         combatPaused = true
         
-        -- รอเพื่อให้แน่ใจว่า combatPaused ถูกเซ็ตก่อน
         wait(0.5)
         
         print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
@@ -2765,7 +2759,6 @@ createToggle(bossContent, "⏰", "Farm Cronus Lv.90 (NEW!)", function(on)
         print("🔍 [Cronus] รอค้นหาบอส Cronus Lv.90...")
         print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
         
-        -- อัปเดต UI
         if cronusStatusLabel then
             cronusStatusLabel.Text = "🔍 สถานะ: กำลังค้นหาบอส..."
             cronusStatusLabel.TextColor3 = colors.info
@@ -2778,13 +2771,11 @@ createToggle(bossContent, "⏰", "Farm Cronus Lv.90 (NEW!)", function(on)
             cronusStatusStroke.Color = colors.info
         end
     else
-        -- คืนค่า combat เมื่อปิด (ถ้าไม่มี Quest/Dungeon ทำงาน)
         if not state.autoQuest and not state.autoDungeon then
             combatPaused = false
             print("✅ [Cronus] ปิดระบบ Auto Cronus - คืนค่า combat ให้ปกติ")
         end
         
-        -- อัปเดต UI
         cronusStatusLabel.Text = "⚪ สถานะ: ปิดอยู่"
         cronusStatusLabel.TextColor3 = colors.textDim
         cronusCombatLabel.Text = "⚔️ Combat: ปกติ"
@@ -2795,86 +2786,93 @@ end)
 createToggle(bossContent, "🏛️", "Auto Dungeon (Trial of Ethernal)", function(on) state.autoDungeon = on end)
 
 bossLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    bossContent.CanvasSize = UDim2.new(0, 0, 0, bossLayout.AbsoluteContentSize.Y + 20)
+    bossContent.CanvasSize = UDim2.new(0, 0, 0, bossLayout.AbsoluteContentSize.Y + math.floor(20 * uiScale))
 end)
 
 -- =================== Mine Tab ===================
 createToggle(mineContent, "⛏️", "Auto Mine (Miner Goon Lv.50)", function(on) state.autoMine = on end)
 
 mineLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    mineContent.CanvasSize = UDim2.new(0, 0, 0, mineLayout.AbsoluteContentSize.Y + 20)
+    mineContent.CanvasSize = UDim2.new(0, 0, 0, mineLayout.AbsoluteContentSize.Y + math.floor(20 * uiScale))
 end)
 
+-- =================== Quest Tab (Adaptive) ===================
+local questTitleHeight = math.floor(50 * uiScale)
 local questTitle = Instance.new("TextLabel", questContent)
-questTitle.Size = UDim2.new(1, 0, 0, 50)
+questTitle.Size = UDim2.new(1, 0, 0, questTitleHeight)
 questTitle.BackgroundTransparency = 1
 questTitle.Text = "🚀 Remote Quest System\n(ไม่ต้องวาป!)"
 questTitle.TextColor3 = colors.success
 questTitle.Font = Enum.Font.GothamBold
-questTitle.TextSize = 16
+questTitle.TextSize = math.floor(16 * uiScale)
 questTitle.TextXAlignment = Enum.TextXAlignment.Center
 questTitle.TextYAlignment = Enum.TextYAlignment.Center
+questTitle.TextScaled = isMobile
 
 local questButtons = {}
+local questCardHeight = math.floor(90 * uiScale)
 for idx, questData in ipairs(questDatabase) do
     local questCard = Instance.new("TextButton", questContent)
-    questCard.Size = UDim2.new(1, 0, 0, 90)
+    questCard.Size = UDim2.new(1, 0, 0, questCardHeight)
     questCard.BackgroundColor3 = colors.cardBg
     questCard.BorderSizePixel = 0
     questCard.Text = ""
     questCard.AutoButtonColor = false
     
     local cardCorner = Instance.new("UICorner", questCard)
-    cardCorner.CornerRadius = UDim.new(0, 12)
+    cardCorner.CornerRadius = UDim.new(0, math.floor(12 * uiScale))
     
     local cardStroke = Instance.new("UIStroke", questCard)
     cardStroke.Color = colors.accent1
     cardStroke.Thickness = 1.5
     cardStroke.Transparency = 0.85
     
+    local iconFrameSize = math.floor(70 * uiScale)
     local iconFrame = Instance.new("Frame", questCard)
-    iconFrame.Size = UDim2.new(0, 70, 1, -16)
-    iconFrame.Position = UDim2.new(0, 8, 0, 8)
+    iconFrame.Size = UDim2.new(0, iconFrameSize, 1, -math.floor(16 * uiScale))
+    iconFrame.Position = UDim2.new(0, math.floor(8 * uiScale), 0, math.floor(8 * uiScale))
     iconFrame.BackgroundColor3 = colors.panel
     iconFrame.BorderSizePixel = 0
     
     local iconCorner = Instance.new("UICorner", iconFrame)
-    iconCorner.CornerRadius = UDim.new(0, 10)
+    iconCorner.CornerRadius = UDim.new(0, math.floor(10 * uiScale))
     
     local iconLabel = Instance.new("TextLabel", iconFrame)
     iconLabel.Size = UDim2.new(1, 0, 1, 0)
     iconLabel.BackgroundTransparency = 1
     iconLabel.Text = questData.icon
     iconLabel.Font = Enum.Font.GothamBold
-    iconLabel.TextSize = 35
+    iconLabel.TextSize = math.floor(35 * uiScale)
     
     local infoFrame = Instance.new("Frame", questCard)
-    infoFrame.Size = UDim2.new(1, -90, 1, -16)
-    infoFrame.Position = UDim2.new(0, 86, 0, 8)
+    infoFrame.Size = UDim2.new(1, -iconFrameSize - math.floor(20 * uiScale), 1, -math.floor(16 * uiScale))
+    infoFrame.Position = UDim2.new(0, iconFrameSize + math.floor(16 * uiScale), 0, math.floor(8 * uiScale))
     infoFrame.BackgroundTransparency = 1
     
     local questNameLabel = Instance.new("TextLabel", infoFrame)
-    questNameLabel.Size = UDim2.new(1, 0, 0, 22)
+    questNameLabel.Size = UDim2.new(1, 0, 0, math.floor(22 * uiScale))
     questNameLabel.BackgroundTransparency = 1
     questNameLabel.Text = questData.name
     questNameLabel.TextColor3 = colors.text
     questNameLabel.Font = Enum.Font.GothamBold
-    questNameLabel.TextSize = 14
+    questNameLabel.TextSize = math.floor(14 * uiScale)
     questNameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    questNameLabel.TextScaled = isMobile
     
     local npcLabel = Instance.new("TextLabel", infoFrame)
-    npcLabel.Size = UDim2.new(1, 0, 0, 18)
-    npcLabel.Position = UDim2.new(0, 0, 0, 24)
+    npcLabel.Size = UDim2.new(1, 0, 0, math.floor(18 * uiScale))
+    npcLabel.Position = UDim2.new(0, 0, 0, math.floor(24 * uiScale))
     npcLabel.BackgroundTransparency = 1
     npcLabel.Text = "👤 NPC: " .. questData.npcName
     npcLabel.TextColor3 = colors.textDim
     npcLabel.Font = Enum.Font.Gotham
-    npcLabel.TextSize = 11
+    npcLabel.TextSize = math.floor(11 * uiScale)
     npcLabel.TextXAlignment = Enum.TextXAlignment.Left
+    npcLabel.TextScaled = isMobile
     
     local typeLabel = Instance.new("TextLabel", infoFrame)
-    typeLabel.Size = UDim2.new(1, 0, 0, 30)
-    typeLabel.Position = UDim2.new(0, 0, 0, 44)
+    typeLabel.Size = UDim2.new(1, 0, 0, math.floor(30 * uiScale))
+    typeLabel.Position = UDim2.new(0, 0, 0, math.floor(44 * uiScale))
     typeLabel.BackgroundTransparency = 1
     if questData.questType == "kill" then
         typeLabel.Text = "⚔️ ฆ่ามอน: " .. #questData.monsters .. " ตัว"
@@ -2885,9 +2883,10 @@ for idx, questData in ipairs(questDatabase) do
     end
     typeLabel.TextColor3 = colors.textDim
     typeLabel.Font = Enum.Font.Gotham
-    typeLabel.TextSize = 11
+    typeLabel.TextSize = math.floor(11 * uiScale)
     typeLabel.TextXAlignment = Enum.TextXAlignment.Left
     typeLabel.TextWrapped = true
+    typeLabel.TextScaled = isMobile
     
     questCard.MouseButton1Click:Connect(function()
         state.selectedQuest = questData
@@ -2922,34 +2921,38 @@ createToggle(questContent, "🚀", "เปิดระบบเควสอั�
 end)
 
 questLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    questContent.CanvasSize = UDim2.new(0, 0, 0, questLayout.AbsoluteContentSize.Y + 20)
+    questContent.CanvasSize = UDim2.new(0, 0, 0, questLayout.AbsoluteContentSize.Y + math.floor(20 * uiScale))
 end)
 
 -- =================== Event Tab ===================
+local eventTitleHeight = math.floor(40 * uiScale)
 local eventTitle = Instance.new("TextLabel", eventContent)
-eventTitle.Size = UDim2.new(1, 0, 0, 40)
+eventTitle.Size = UDim2.new(1, 0, 0, eventTitleHeight)
 eventTitle.BackgroundTransparency = 1
 eventTitle.Text = "🎃 Halloween Event"
 eventTitle.TextColor3 = colors.warning
 eventTitle.Font = Enum.Font.GothamBold
-eventTitle.TextSize = 16
+eventTitle.TextSize = math.floor(16 * uiScale)
 eventTitle.TextXAlignment = Enum.TextXAlignment.Center
+eventTitle.TextScaled = isMobile
 
 createToggle(eventContent, "🎃", "Auto Halloween Event", function(on) state.autoEvent = on end)
 
 eventLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    eventContent.CanvasSize = UDim2.new(0, 0, 0, eventLayout.AbsoluteContentSize.Y + 20)
+    eventContent.CanvasSize = UDim2.new(0, 0, 0, eventLayout.AbsoluteContentSize.Y + math.floor(20 * uiScale))
 end)
 
 -- =================== Other Tab ===================
+local otherTitleHeight = math.floor(40 * uiScale)
 local otherTitle = Instance.new("TextLabel", otherContent)
-otherTitle.Size = UDim2.new(1, 0, 0, 40)
+otherTitle.Size = UDim2.new(1, 0, 0, otherTitleHeight)
 otherTitle.BackgroundTransparency = 1
 otherTitle.Text = "⚙️ การตั้งค่า"
 otherTitle.TextColor3 = colors.accent1
 otherTitle.Font = Enum.Font.GothamBold
-otherTitle.TextSize = 16
+otherTitle.TextSize = math.floor(16 * uiScale)
 otherTitle.TextXAlignment = Enum.TextXAlignment.Center
+otherTitle.TextScaled = isMobile
 
 createToggle(otherContent, "🔒", "Lock Position", function(on) state.lockPos = on end)
 createToggle(otherContent, "😴", "AFK Mode", function(on) state.afkEnabled = on end)
@@ -2963,13 +2966,11 @@ createToggle(otherContent, "💫", "Auto Skill R", function(on) state.autoSkills
 createToggle(otherContent, "⚡", "Auto Skill C", function(on) state.autoSkills.C = on end)
 createToggle(otherContent, "✨", "Auto Skill V", function(on) state.autoSkills.V = on end)
 
-
-
 otherLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    otherContent.CanvasSize = UDim2.new(0, 0, 0, otherLayout.AbsoluteContentSize.Y + 20)
+    otherContent.CanvasSize = UDim2.new(0, 0, 0, otherLayout.AbsoluteContentSize.Y + math.floor(20 * uiScale))
 end)
 
--- =================== Tab Switching with Animation ===================
+-- =================== Tab Switching ===================
 local function switchTab(tabName)
     local tabs = {
         {name = "Farm", content = farmContent, btn = tabFarm, icon = tabFarmIcon, text = tabFarmText, stroke = tabFarmStroke},
@@ -3009,16 +3010,17 @@ tabQuest.MouseButton1Click:Connect(function() switchTab("Quest") end)
 tabEvent.MouseButton1Click:Connect(function() switchTab("Event") end)
 tabOther.MouseButton1Click:Connect(function() switchTab("Other") end)
 
--- =================== Minimize Button ===================
+-- =================== Minimize Button (Adaptive) ===================
 local minimized = false
+local rBtnSize = math.floor(70 * uiScale)
 local rBtn = Instance.new("TextButton")
-rBtn.Size = UDim2.new(0, 70, 0, 70)
-rBtn.Position = UDim2.new(0, 50, 0, 100)
+rBtn.Size = UDim2.new(0, rBtnSize, 0, rBtnSize)
+rBtn.Position = UDim2.new(0, math.floor(50 * uiScale), 0, math.floor(100 * uiScale))
 rBtn.BackgroundColor3 = colors.accent1
 rBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 rBtn.Text = "⚡"
 rBtn.Font = Enum.Font.GothamBold
-rBtn.TextSize = 32
+rBtn.TextSize = math.floor(32 * uiScale)
 rBtn.Visible = false
 rBtn.BorderSizePixel = 0
 rBtn.Parent = screenGui
@@ -3048,7 +3050,7 @@ btnMin.MouseButton1Click:Connect(function()
     mainFrame.Visible = false
     rBtn.Visible = true
     TweenService:Create(rBtn, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Size = UDim2.new(0, 70, 0, 70)
+        Size = UDim2.new(0, rBtnSize, 0, rBtnSize)
     }):Play()
 end)
 
@@ -3063,8 +3065,8 @@ rBtn.MouseButton1Click:Connect(function()
     mainFrame.Size = UDim2.new(0, 0, 0, 0)
     mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
     TweenService:Create(mainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Size = UDim2.new(0, 520, 0, 600),
-        Position = UDim2.new(0.5, -260, 0.5, -300)
+        Size = UDim2.new(0, mainWidth, 0, mainHeight),
+        Position = UDim2.new(0.5, -mainWidth/2, 0.5, -mainHeight/2)
     }):Play()
 end)
 
@@ -3073,7 +3075,7 @@ local rDragging = false
 local rDragStart, rStartPos
 
 rBtn.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         rDragging = true
         rDragStart = input.Position
         rStartPos = rBtn.Position
@@ -3086,7 +3088,7 @@ rBtn.InputBegan:Connect(function(input)
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-    if rDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+    if rDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
         local delta = input.Position - rDragStart
         local newX = rStartPos.X.Offset + delta.X
         local newY = rStartPos.Y.Offset + delta.Y
@@ -3108,7 +3110,9 @@ btnClose.MouseButton1Click:Connect(function()
     screenGui:Destroy()
 end)
 
-print("🎨 Ultra Modern Admin UI v5.1 loaded successfully!")
+print("🎨 Ultra Modern Admin UI v5.2 loaded successfully!")
+print("📱 Mobile Responsive - Auto-detected screen size!")
 print("✨ Created by: Modern UI Designer")
 print("🌈 Features: Gradient colors, smooth animations, glassmorphism")
 print("⚡ NEW: Cronus Lv.90 Boss Farm added!")
+print("📲 Device: " .. (isMobile and "Mobile" or "Desktop"))
