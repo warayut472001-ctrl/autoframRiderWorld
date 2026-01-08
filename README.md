@@ -44,7 +44,7 @@ local targetMonsters = {
     "Swan User Lv.30","Zebra Monster Lv.35","Dark Dragon User Lv.40",
     "Gazelle User Lv.45","Violent Dragoon Lv.50","Shark Overloaded Lv.55",
     "Shark User Lv.60","Foundation Soldier Lv.64","Timeless Goon Lv.70",
-    "Captain Goon Lv.75","Rushed Blaster Lv.90","Rushed Elasther Lv.90","Rushed Orca Lv.90"
+    "Captain Goon Lv.75"
 }
 
 local selectedMonsters = {}
